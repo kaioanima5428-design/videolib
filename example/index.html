@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Lib - 1x1 Call Test</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; }
+        .videos { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
+        video { background: #000; border-radius: 8px; max-width: 400px; width: 100%; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Teste - Chamada 1x1</h1>
+    <button id="startBtn">Entrar na Chamada</button>
+    <div class="videos">
+        <div>
+            <h3>Local</h3>
+            <video id="localVideo" autoplay playsinline muted></video>
+        </div>
+        <div>
+            <h3>Remoto</h3>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Video } from '/client/index.js';
+
+        const startBtn = document.getElementById('startBtn');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+
+        startBtn.addEventListener('click', async () => {
+            startBtn.disabled = true;
+            
+            // Cria a abstração da chamada
+            const chamada = await Video.chamada('sala-teste');
+
+            // Quando receber vídeo remoto, anexa ao elemento
+            chamada.onVideo((stream) => {
+                remoteVideo.srcObject = stream;
+            });
+
+            // 1. Pede câmera e exibe no vídeo local (prepara o stream ANTES de conectar)
+            await chamada.camera(localVideo);
+            await chamada.microfone();
+
+            // 2. Entra na sala (signaling inicia a conexão WebRTC já com a câmera ativa)
+            await chamada.entrar();
+        });
+    </script>
+</body>
+</html>
