@@ -89,6 +89,20 @@
             color: var(--text-main);
         }
 
+        .lang-select {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+        }
+        .lang-select:hover { border-color: var(--text-main); }
+        .lang-select option { background: var(--bg-color); }
+
         /* Hero Section */
         .hero {
             text-align: center;
@@ -380,6 +394,8 @@
             .feature-block:nth-child(even) { direction: ltr; }
             .hero h1 { font-size: 2.5rem; }
         }
+        
+        .text-en { display: none; }
     </style>
 </head>
 <body>
@@ -387,26 +403,47 @@
     <nav>
         <div class="logo">video-lib</div>
         <div class="nav-links">
-            <a href="#recursos">Por que usar?</a>
-            <a href="#exemplos">Exemplos</a>
-            <a href="#cdn">Instalação</a>
+            <a href="#recursos"><span class="text-pt">Por que usar?</span><span class="text-en">Why use it?</span></a>
+            <a href="#exemplos"><span class="text-pt">Exemplos</span><span class="text-en">Examples</span></a>
+            <a href="#cdn"><span class="text-pt">Instalação</span><span class="text-en">Installation</span></a>
         </div>
-        <a href="https://github.com/seu-usuario/video-lib" class="nav-btn" target="_blank">GitHub</a>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <select id="langToggle" class="lang-select" onchange="toggleLanguage(this.value)">
+                <option value="pt">PT-BR</option>
+                <option value="en">EN</option>
+            </select>
+            <a href="https://github.com/kaioanima5428-design/videolib" class="nav-btn" target="_blank">GitHub</a>
+        </div>
     </nav>
 
     <section class="hero">
-        <h1>A ponte mais simples entre<br>Vídeo e a sua Aplicação.</h1>
-        <p>Adicione chamadas 1x1, salas de reunião, lives para milhares de pessoas e upload/streaming de vídeos com pouquíssimas linhas de código. Sem se preocupar com WebRTC ou Servidores Complexos.</p>
+        <h1>
+            <span class="text-pt">A ponte mais simples entre<br>Vídeo e a sua Aplicação.</span>
+            <span class="text-en">The simplest bridge between<br>Video and your App.</span>
+        </h1>
+        <p>
+            <span class="text-pt">Adicione chamadas 1x1, salas de reunião, lives para milhares de pessoas e upload/streaming de vídeos com pouquíssimas linhas de código. Sem se preocupar com WebRTC ou Servidores Complexos.</span>
+            <span class="text-en">Add 1x1 calls, meeting rooms, live streams for thousands of people, and video upload/streaming with just a few lines of code. No need to worry about WebRTC or complex servers.</span>
+        </p>
         
         <div class="hero-buttons">
-            <a href="#cdn" class="btn btn-primary">Começar agora</a>
-            <a href="#exemplos" class="btn btn-secondary">Descubra a diferença</a>
+            <a href="#cdn" class="btn btn-primary">
+                <span class="text-pt">Começar agora</span>
+                <span class="text-en">Get started</span>
+            </a>
+            <a href="#exemplos" class="btn btn-secondary">
+                <span class="text-pt">Descubra a diferença</span>
+                <span class="text-en">Discover the difference</span>
+            </a>
         </div>
     </section>
 
     <!-- Code Mockup -->
     <div style="max-width: 800px; margin: 0 auto; text-align: left;">
-        <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+        <span class="env-badge env-front">
+            <span class="text-pt">💻 Frontend (Navegador)</span>
+            <span class="text-en">💻 Frontend (Browser)</span>
+        </span>
     </div>
     <div class="mac-window">
         <div class="mac-header">
@@ -415,7 +452,7 @@
             <div class="mac-dot green"></div>
         </div>
         <div class="mac-body">
-<pre><code class="language-javascript">import { Video } from 'video-lib';
+<div class="code-pt"><pre><code class="language-javascript">import { Video } from 'video-lib';
 
 // Criar uma Live Stream (Streamer)
 const live = await Video.live("minha-super-live");
@@ -425,7 +462,18 @@ await live.camera(document.getElementById('meuVideo'));
 await live.microfone();
 
 // Pronto! Estamos ao vivo.
-await live.iniciar();</code></pre>
+await live.iniciar();</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">import { Video } from 'video-lib';
+
+// Create a Live Stream (Streamer)
+const live = await Video.stream("my-super-live");
+
+// Turn on camera and microphone
+await live.video(document.getElementById('myVideo'));
+await live.audio();
+
+// Ready! We are live.
+await live.start();</code></pre></div>
         </div>
     </div>
 
@@ -434,22 +482,38 @@ await live.iniciar();</code></pre>
         <!-- Feature 1: Salas -->
         <div class="feature-block">
             <div class="feature-text">
-                <h2>Salas e Chamadas</h2>
-                <p>Crie chamadas 1x1 ou salas de reunião em malha (Mesh P2P) onde todos se veem. A biblioteca gerencia toda a sinalização e reconexões automaticamente se a internet cair.</p>
+                <h2>
+                    <span class="text-pt">Salas e Chamadas</span>
+                    <span class="text-en">Rooms and Calls</span>
+                </h2>
+                <p>
+                    <span class="text-pt">Crie chamadas 1x1 ou salas de reunião em malha (Mesh P2P) onde todos se veem. A biblioteca gerencia toda a sinalização e reconexões automaticamente se a internet cair.</span>
+                    <span class="text-en">Create 1x1 calls or mesh P2P meeting rooms where everyone sees each other. The library handles all signaling and auto-reconnects if the internet drops.</span>
+                </p>
                 
-                <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+                <span class="env-badge env-front">
+                    <span class="text-pt">💻 Frontend (Navegador)</span>
+                    <span class="text-en">💻 Frontend (Browser)</span>
+                </span>
                 <div class="mac-window" style="margin: 0;">
                     <div class="mac-header">
                         <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
                     </div>
                     <div class="mac-body" style="padding: 1rem;">
-<pre><code class="language-javascript">const sala = await Video.sala("reuniao-equipe");
+<div class="code-pt"><pre><code class="language-javascript">const sala = await Video.sala("reuniao-equipe");
 await sala.entrar();
 
 sala.on('video', ({ usuario, stream }) => {
   // Novo participante chegou!
   anexarVideoNaTela(usuario.id, stream);
-});</code></pre>
+});</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">const room = await Video.room("team-meeting");
+await room.join();
+
+room.on('video', ({ usuario, stream }) => {
+  // New participant arrived!
+  attachVideoToScreen(usuario.id, stream);
+});</code></pre></div>
                     </div>
                 </div>
             </div>
@@ -482,19 +546,33 @@ sala.on('video', ({ usuario, stream }) => {
                 </div>
             </div>
             <div class="feature-text">
-                <h2>Transmissões ao Vivo</h2>
-                <p>Um transmite, muitos assistem. Economize banda usando o modo Live, onde espectadores apenas recebem o fluxo de dados sem sobrecarregar a rede do Streamer.</p>
-                <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+                <h2>
+                    <span class="text-pt">Transmissões ao Vivo</span>
+                    <span class="text-en">Live Broadcasting</span>
+                </h2>
+                <p>
+                    <span class="text-pt">Um transmite, muitos assistem. Economize banda usando o modo Live, onde espectadores apenas recebem o fluxo de dados sem sobrecarregar a rede do Streamer.</span>
+                    <span class="text-en">One streams, many watch. Save bandwidth using Live mode, where viewers only receive the data stream without overloading the Streamer's network.</span>
+                </p>
+                <span class="env-badge env-front">
+                    <span class="text-pt">💻 Frontend (Navegador)</span>
+                    <span class="text-en">💻 Frontend (Browser)</span>
+                </span>
                 <div class="mac-window" style="margin: 0;">
                     <div class="mac-header">
                         <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
                     </div>
                     <div class="mac-body" style="padding: 1rem;">
-<pre><code class="language-javascript">// No cliente que vai apenas assistir:
+<div class="code-pt"><pre><code class="language-javascript">// No cliente que vai apenas assistir:
 const live = await Video.assistir("gameplay-lol");
 
 live.video(document.getElementById('player'));
-await live.conectar();</code></pre>
+await live.conectar();</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">// In the viewer client:
+const live = await Video.watch("gameplay-lol");
+
+live.video(document.getElementById('player'));
+await live.connect();</code></pre></div>
                     </div>
                 </div>
             </div>
@@ -503,19 +581,33 @@ await live.conectar();</code></pre>
         <!-- Feature 3: VOD / Files -->
         <div class="feature-block">
             <div class="feature-text">
-                <h2>VOD, Upload e Download</h2>
-                <p>Não é só tempo real. O servidor embutido lida com arquivos físicos. Faça upload, liste vídeos e reproduza com suporte nativo a HTTP Range Requests (permite avançar o vídeo sem baixar tudo).</p>
-                <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+                <h2>
+                    <span class="text-pt">VOD, Upload e Download</span>
+                    <span class="text-en">VOD, Upload and Download</span>
+                </h2>
+                <p>
+                    <span class="text-pt">Não é só tempo real. O servidor embutido lida com arquivos físicos. Faça upload, liste vídeos e reproduza com suporte nativo a HTTP Range Requests (permite avançar o vídeo sem baixar tudo).</span>
+                    <span class="text-en">Not just real-time. The built-in server handles physical files. Upload, list videos, and play with native support for HTTP Range Requests (seek without downloading everything).</span>
+                </p>
+                <span class="env-badge env-front">
+                    <span class="text-pt">💻 Frontend (Navegador)</span>
+                    <span class="text-en">💻 Frontend (Browser)</span>
+                </span>
                 <div class="mac-window" style="margin: 0;">
                     <div class="mac-header">
                         <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
                     </div>
                     <div class="mac-body" style="padding: 1rem;">
-<pre><code class="language-javascript">// Enviar um arquivo do input file
+<div class="code-pt"><pre><code class="language-javascript">// Enviar um arquivo do input file
 await Video.enviar(arquivoSelecionado);
 
 // Reproduzir direto do servidor
-await Video.reproduzir(urlDoVideo, player);</code></pre>
+await Video.reproduzir(urlDoVideo, player);</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">// Upload file from input
+await Video.upload(selectedFile);
+
+// Play directly from server
+await Video.play(videoUrl, player);</code></pre></div>
                     </div>
                 </div>
             </div>
@@ -523,7 +615,10 @@ await Video.reproduzir(urlDoVideo, player);</code></pre>
                 <div class="mock-file">
                     <div class="mock-file-icon">☁️</div>
                     <div style="font-weight:bold; color:white; margin-bottom:5px;">video_apresentacao.mp4</div>
-                    <div style="font-size:0.9rem;">Enviando... 45%</div>
+                    <div style="font-size:0.9rem;">
+                        <span class="text-pt">Enviando... 45%</span>
+                        <span class="text-en">Uploading... 45%</span>
+                    </div>
                     <div style="margin-top:15px; height:4px; background:#333; border-radius:2px; overflow:hidden;">
                         <div style="width:45%; height:100%; background:white;"></div>
                     </div>
@@ -533,25 +628,38 @@ await Video.reproduzir(urlDoVideo, player);</code></pre>
 
     </section>
 
-    </section>
-
     <!-- Full Documentation Section -->
     <section id="documentacao" class="docs-section" style="max-width: 1000px; margin: 0 auto 6rem; padding: 0 2rem;">
         <div style="text-align: center; margin-bottom: 4rem;">
-            <h2 style="font-size: 2.5rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 1rem;">Mergulhe Fundo</h2>
-            <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Tudo o que você precisa saber sobre o backend, controles avançados de mídia e referências da API.</p>
+            <h2 style="font-size: 2.5rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 1rem;">
+                <span class="text-pt">Mergulhe Fundo</span>
+                <span class="text-en">Dive Deep</span>
+            </h2>
+            <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+                <span class="text-pt">Tudo o que você precisa saber sobre o backend, controles avançados de mídia e referências da API.</span>
+                <span class="text-en">Everything you need to know about the backend, advanced media controls, and API references.</span>
+            </p>
         </div>
 
         <div class="doc-block" style="margin-bottom: 4rem;">
-            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">O Servidor de Sinalização (Backend)</h3>
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Para que os navegadores conversem entre si, precisamos de um servidor Node.js intermediário. A videolib faz o setup pesado para você.</p>
-            <span class="env-badge env-back">⚙️ Backend (Node.js)</span>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <span class="text-pt">O Servidor de Sinalização (Backend)</span>
+                <span class="text-en">The Signaling Server (Backend)</span>
+            </h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                <span class="text-pt">Para que os navegadores conversem entre si, precisamos de um servidor Node.js intermediário. A videolib faz o setup pesado para você.</span>
+                <span class="text-en">For browsers to talk to each other, we need an intermediary Node.js server. videolib does the heavy lifting for you.</span>
+            </p>
+            <span class="env-badge env-back">
+                <span class="text-pt">⚙️ Backend (Node.js)</span>
+                <span class="text-en">⚙️ Backend (Node.js)</span>
+            </span>
             <div class="mac-window" style="margin: 0;">
                 <div class="mac-header">
                     <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
                 </div>
                 <div class="mac-body" style="padding: 1rem;">
-<pre><code class="language-javascript">import express from 'express';
+<div class="code-pt"><pre><code class="language-javascript">import express from 'express';
 import { VideoServer } from '@caiomultiversando/videolib/server';
 
 const app = express();
@@ -563,21 +671,43 @@ const httpServer = app.listen(3000);
 // 2. Acopla o VideoServer nele (Sem conflito de portas!)
 const video = new VideoServer();
 video.videos('./meus-videos'); // Serve arquivos para VOD
-video.anexar(httpServer);</code></pre>
+video.anexar(httpServer);</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">import express from 'express';
+import { VideoServer } from '@caiomultiversando/videolib/server';
+
+const app = express();
+app.get('/', (req, res) => res.send('My Express App!'));
+
+// 1. Start your normal server
+const httpServer = app.listen(3000);
+
+// 2. Attach VideoServer to it (No port conflicts!)
+const video = new VideoServer();
+video.videos('./my-videos'); // Serve VOD files
+video.attach(httpServer); // Note: assuming 'attach' is the english alias, or 'anexar'</code></pre></div>
                 </div>
             </div>
         </div>
 
         <div class="doc-block" style="margin-bottom: 4rem;">
-            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Controles Avançados (Mute, Câmera e Tela)</h3>
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">A manipulação de mídia funciona em tempo real. Você pode substituir a câmera pela tela do PC sem derrubar a chamada.</p>
-            <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <span class="text-pt">Controles Avançados (Mute, Câmera e Tela)</span>
+                <span class="text-en">Advanced Controls (Mute, Camera and Screen)</span>
+            </h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                <span class="text-pt">A manipulação de mídia funciona em tempo real. Você pode substituir a câmera pela tela do PC sem derrubar a chamada.</span>
+                <span class="text-en">Media manipulation works in real-time. You can replace the camera with the PC screen without dropping the call.</span>
+            </p>
+            <span class="env-badge env-front">
+                <span class="text-pt">💻 Frontend (Navegador)</span>
+                <span class="text-en">💻 Frontend (Browser)</span>
+            </span>
             <div class="mac-window" style="margin: 0;">
                 <div class="mac-header">
                     <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
                 </div>
                 <div class="mac-body" style="padding: 1rem;">
-<pre><code class="language-javascript">// Mutar e Desmutar microfone
+<div class="code-pt"><pre><code class="language-javascript">// Mutar e Desmutar microfone
 sala.mute();
 sala.desmutar();
 
@@ -589,69 +719,128 @@ sala.retomarCamera();
 await sala.tela();
 
 // Voltar para a câmera normal
-await sala.pararTela();</code></pre>
+await sala.pararTela();</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">// Mute and unmute microphone
+room.mute();
+room.unmute();
+
+// Pause own video (black screen)
+room.pauseVideo();
+room.resumeVideo();
+
+// Share PC screen (Replaces local camera)
+await room.screen();
+
+// Return to normal camera
+await room.stopScreen();</code></pre></div>
                 </div>
             </div>
         </div>
 
         <div class="doc-block" style="margin-bottom: 4rem;">
-            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Reconexão Automática (Backoff)</h3>
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">A internet caiu? O usuário trocou do 4G para o Wi-Fi? A biblioteca tenta se reconectar sozinha e reentra nas salas.</p>
-            <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <span class="text-pt">Reconexão Automática (Backoff)</span>
+                <span class="text-en">Automatic Reconnection (Backoff)</span>
+            </h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                <span class="text-pt">A internet caiu? O usuário trocou do 4G para o Wi-Fi? A biblioteca tenta se reconectar sozinha e reentra nas salas.</span>
+                <span class="text-en">Internet dropped? User switched from 4G to Wi-Fi? The library tries to reconnect automatically and rejoins the rooms.</span>
+            </p>
+            <span class="env-badge env-front">
+                <span class="text-pt">💻 Frontend (Navegador)</span>
+                <span class="text-en">💻 Frontend (Browser)</span>
+            </span>
             <div class="mac-window" style="margin: 0;">
                 <div class="mac-header">
                     <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
                 </div>
                 <div class="mac-body" style="padding: 1rem;">
-<pre><code class="language-javascript">sala.on("reconectando", (info) => {
+<div class="code-pt"><pre><code class="language-javascript">sala.on("reconectando", (info) => {
   console.log(`Conexão perdida. Tentando novamente... ${info.attempt}/${info.maxAttempts}`);
 });
 
 sala.on("reconectado", () => {
   console.log("Restaurado! Estamos de volta à sala.");
-});</code></pre>
+});</code></pre></div>
+<div class="code-en" style="display:none;"><pre><code class="language-javascript">room.on("reconnecting", (info) => {
+  console.log(`Connection lost. Trying again... ${info.attempt}/${info.maxAttempts}`);
+});
+
+room.on("reconnected", () => {
+  console.log("Restored! We are back in the room.");
+});</code></pre></div>
                 </div>
             </div>
         </div>
 
         <div class="doc-block">
-            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Referência da API Frontend</h3>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <span class="text-pt">Referência da API Frontend</span>
+                <span class="text-en">Frontend API Reference</span>
+            </h3>
             <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
                     <thead style="background: #111;">
                         <tr>
-                            <th style="padding: 1rem; border-bottom: 1px solid var(--border-color);">Método / Classe</th>
-                            <th style="padding: 1rem; border-bottom: 1px solid var(--border-color);">Descrição</th>
+                            <th style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                                <span class="text-pt">Método / Classe</span>
+                                <span class="text-en">Method / Class</span>
+                            </th>
+                            <th style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                                <span class="text-pt">Descrição</span>
+                                <span class="text-en">Description</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.configure(opts)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Configura o WebSocket e URL do servidor.</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Configura o WebSocket e URL do servidor.</span>
+                                <span class="text-en">Configures the WebSocket and Server URL.</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.chamada(id)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cria uma Call P2P 1x1.</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.chamada(id) / Video.call(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Cria uma Call P2P 1x1.</span>
+                                <span class="text-en">Creates a 1x1 P2P Call.</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.sala(id)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cria uma Room P2P (Mesh).</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.sala(id) / Video.room(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Cria uma Room P2P (Mesh).</span>
+                                <span class="text-en">Creates a P2P Room (Mesh).</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.live(id)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cria uma transmissão ao vivo (Streamer).</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.live(id) / Video.stream(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Cria uma transmissão ao vivo (Streamer).</span>
+                                <span class="text-en">Creates a live broadcast (Streamer).</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.assistir(id)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Acessa uma transmissão (Viewer - Apenas recebe dados).</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.assistir(id) / Video.watch(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Acessa uma transmissão (Viewer - Apenas recebe dados).</span>
+                                <span class="text-en">Accesses a broadcast (Viewer - Only receives data).</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.reproduzir(url)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Faz streaming (VOD) de um vídeo com suporte a saltos (seeking).</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.reproduzir(url) / Video.play(url)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Faz streaming (VOD) de um vídeo com suporte a saltos (seeking).</span>
+                                <span class="text-en">Streams (VOD) a video with support for seeking.</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.enviar(arquivo)</code></td>
-                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Faz upload multipart de um File.</td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.enviar(arquivo) / Video.upload(file)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                <span class="text-pt">Faz upload multipart de um File.</span>
+                                <span class="text-en">Uploads a File (multipart).</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -660,20 +849,42 @@ sala.on("reconectado", () => {
     </section>
 
     <section id="cdn" class="cdn-section">
-        <h2>Pronto para usar?</h2>
-        <p>Basta importar a biblioteca diretamente no seu projeto via CDN. Não requer bundlers se você não quiser.</p>
+        <h2>
+            <span class="text-pt">Pronto para usar?</span>
+            <span class="text-en">Ready to use?</span>
+        </h2>
+        <p>
+            <span class="text-pt">Instale via NPM para usar com bundlers, ou importe diretamente via CDN no navegador.</span>
+            <span class="text-en">Install via NPM to use with bundlers, or import directly via CDN in the browser.</span>
+        </p>
+
+        <h3 style="text-align: left; margin-bottom: 0.5rem;">
+            <span class="text-pt">Via NPM (Recomendado)</span>
+            <span class="text-en">Via NPM (Recommended)</span>
+        </h3>
+        <div class="copy-box" style="margin-bottom: 2rem;">
+            <span class="url">npm install @caiomultiversando/videolib</span>
+        </div>
+
+        <h3 style="text-align: left; margin-bottom: 0.5rem;">Via CDN</h3>
         
         <div class="copy-box">
             &lt;script type="module"&gt;<br>
             &nbsp;&nbsp;import { Video } from "<span class="url" id="cdnUrl">http://localhost:3000/client/index.js</span>";<br><br>
             &nbsp;&nbsp;Video.configure({ signalingUrl: "ws://localhost:3000" });<br>
             &lt;/script&gt;
-            <button class="copy-btn" onclick="copiar()">Copiar</button>
+            <button class="copy-btn" onclick="copiar()">
+                <span class="text-pt">Copiar</span>
+                <span class="text-en">Copy</span>
+            </button>
         </div>
     </section>
 
     <footer style="text-align:center; padding: 2rem; color: #666; border-top: 1px solid var(--border-color);">
-        <p>© 2026 Video Lib. Feito para facilitar a vida do dev.</p>
+        <p>
+            <span class="text-pt">© 2026 Video Lib. Feito para facilitar a vida do dev.</span>
+            <span class="text-en">© 2026 Video Lib. Made to make the developer's life easier.</span>
+        </p>
     </footer>
 
     <!-- Prism.js for Syntax Highlighting -->
@@ -689,8 +900,36 @@ sala.on("reconectado", () => {
             const code = `<script type="module">\n  import { Video } from "${baseUrl}/client/index.js";\n\n  Video.configure({ signalingUrl: "ws://${window.location.host}" });\n<\/script>`;
             navigator.clipboard.writeText(code).then(() => {
                 const btn = document.querySelector('.copy-btn');
-                btn.textContent = 'Copiado!';
-                setTimeout(() => btn.textContent = 'Copiar', 2000);
+                const isEn = document.getElementById('langToggle').value === 'en';
+                btn.innerHTML = isEn ? '<span class="text-pt" style="display:none">Copiado!</span><span class="text-en">Copied!</span>' : '<span class="text-pt">Copiado!</span><span class="text-en" style="display:none">Copied!</span>';
+                
+                setTimeout(() => {
+                    btn.innerHTML = isEn ? '<span class="text-pt" style="display:none">Copiar</span><span class="text-en">Copy</span>' : '<span class="text-pt">Copiar</span><span class="text-en" style="display:none">Copy</span>';
+                }, 2000);
+            });
+        }
+
+        // Language Toggle Logic
+        function toggleLanguage(lang) {
+            const ptBlocks = document.querySelectorAll('.text-pt, .code-pt');
+            const enBlocks = document.querySelectorAll('.text-en, .code-en');
+            
+            if (lang === 'en') {
+                ptBlocks.forEach(b => b.style.display = 'none');
+                enBlocks.forEach(b => b.style.display = 'inline-block'); // Or block if it's a div
+            } else {
+                enBlocks.forEach(b => b.style.display = 'none');
+                ptBlocks.forEach(b => b.style.display = 'inline-block');
+            }
+            
+            // Fix display property for code blocks and some block elements
+            document.querySelectorAll('.code-pt, .code-en, p > span, h1 > span, h2 > span, h3 > span').forEach(el => {
+                if (el.style.display === 'inline-block' && (el.classList.contains('code-pt') || el.classList.contains('code-en'))) {
+                     el.style.display = 'block';
+                }
+                if (el.style.display === 'inline-block' && !el.classList.contains('code-pt') && !el.classList.contains('code-en')) {
+                     el.style.display = 'inline';
+                }
             });
         }
     </script>

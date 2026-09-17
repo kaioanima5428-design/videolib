@@ -106,4 +106,8 @@ export class Viewer extends SimpleEventEmitter {
         }
         this.signaling.disconnect();
     }
+
+    // ==================== ALIASES EM INGLÊS ====================
+    async connect() { return this.conectar(); }
+    leave() { return this.sair(); }
 }

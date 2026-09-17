@@ -94,4 +94,14 @@ export class Video {
 
         return response.json();
     }
+
+    // ==================== ALIASES EM INGLÊS ====================
+    static async call(roomId) { return this.chamada(roomId); }
+    static async room(roomId) { return this.sala(roomId); }
+    static async stream(liveId) { return this.live(liveId); }
+    static async watch(liveId) { return this.assistir(liveId); }
+    static async play(url, videoElement) { return this.reproduzir(url, videoElement); }
+    static async download(url, nomeArquivo) { return this.baixar(url, nomeArquivo); }
+    static async list(url) { return this.listar(url); }
+    static async upload(arquivo, url) { return this.enviar(arquivo, url); }
 }

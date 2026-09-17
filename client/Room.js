@@ -285,4 +285,14 @@ export class Room extends SimpleEventEmitter {
 
         this.emit('tela:parou');
     }
+
+    // ==================== ALIASES EM INGLÊS ====================
+    async join() { return this.entrar(); }
+    async video(videoElement) { return this.camera(videoElement); }
+    async audio(enable = true) { return this.microfone(enable); }
+    unmute() { return this.desmutar(); }
+    pauseVideo() { return this.pausarCamera(); }
+    resumeVideo() { return this.retomarCamera(); }
+    async screen(videoElement) { return this.tela(videoElement); }
+    async stopScreen() { return this.pararTela(); }
 }

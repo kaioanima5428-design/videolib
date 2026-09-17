@@ -1,5 +1,7 @@
 # Video Lib 🎥
 
+*[🇺🇸 Read in English](README.en.md) | [🇧🇷 Leia em Português](README.md)*
+
 Bem-vindo à **Video Lib**! Uma biblioteca JavaScript moderna, desenvolvida para Node.js e navegadores, projetada para **abstrair completamente a complexidade de transmissão de áudio e vídeo em tempo real** utilizando a tecnologia WebRTC.
 
 Você não precisa entender sobre `RTCPeerConnection`, `SDP` (Session Description Protocol), `ICE Candidates`, Servidores `STUN/TURN` ou como criar um servidor de `Signaling`. A biblioteca faz todo o trabalho pesado nos bastidores, fornecendo uma API elegante, assíncrona e incrivelmente fácil de usar.
@@ -21,13 +23,11 @@ Você não precisa entender sobre `RTCPeerConnection`, `SDP` (Session Descriptio
 
 ## 📦 Como Instalar
 
-*(A biblioteca será publicada em breve no NPM. No momento, o código está disponível localmente neste repositório).*
-
 Certifique-se de que o seu projeto Node.js suporta ES Modules (`"type": "module"` no `package.json`).
 
 ```bash
-# Única dependência
-npm install ws
+# Instala a biblioteca e o servidor
+npm install @caiomultiversando/videolib
 ```
 
 ---

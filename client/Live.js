@@ -185,4 +185,15 @@ export class Live extends SimpleEventEmitter {
         if (this.localVideoElement) this.localVideoElement.srcObject = this.localStream;
         this.emit('tela:parou');
     }
+
+    // ==================== ALIASES EM INGLÊS ====================
+    async start() { return this.iniciar(); }
+    async stop() { return this.parar(); }
+    async video(videoElement) { return this.camera(videoElement); }
+    async audio(enable = true) { return this.microfone(enable); }
+    unmute() { return this.desmutar(); }
+    pauseVideo() { return this.pausarCamera(); }
+    resumeVideo() { return this.retomarCamera(); }
+    async screen(videoElement) { return this.tela(videoElement); }
+    async stopScreen() { return this.pararTela(); }
 }

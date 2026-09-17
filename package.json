@@ -1,6 +1,6 @@
 {
   "name": "@caiomultiversando/videolib",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "A abstração definitiva para WebRTC e Vídeo. Adicione chamadas 1x1, salas P2P, lives e VOD ao seu app com facilidade.",
   "main": "client/index.js",
   "exports": {
@@ -27,6 +27,13 @@
   ],
   "author": "Caio",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kaioanima5428-design/videolib.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kaioanima5428-design/videolib/issues"
+  },
   "dependencies": {
     "ws": "^8.21.3"
   },
