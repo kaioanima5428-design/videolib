@@ -319,5 +319,14 @@ await Video.download('http://localhost:3000/videos/class.mp4', 'my-class.mp4');
 
 ### VideoServer (Backend)
 - `server.videos(folderPath)`
+- `server.youtubeParty(roomId, playlist)` (Starts a Headless YouTube Watch Party without a client streamer)
+- `server.youtubeQueue(roomId, url)`
+- `server.youtubePlay(roomId)`, `server.youtubePause(roomId)`, `server.youtubeSeek(roomId, seconds)`
+- `server.stopYoutubeParty(roomId)`
+- `server.fileParty(roomId, playlist)` (Starts a Headless VOD Sync Party for local files in `/videos`)
+- `server.fileQueue(roomId, url)`
+- `server.filePlay(roomId)`, `server.filePause(roomId)`, `server.fileSeek(roomId, seconds)`
+- `server.stopFileParty(roomId)`
 - `server.start(port)`
+- `server.stop()`
 - `server.attach(httpServer)`

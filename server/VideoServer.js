@@ -26,6 +26,8 @@ export class VideoServer {
         this.wss = null;
         this.httpServer = null;
         this.rooms = new Map(); // roomId -> Map(userId -> ws)
+        this.youtubeRooms = new Map(); // roomId -> { playlist, queueIndex, state, currentTime, lastUpdate, interval }
+        this.fileRooms = new Map(); // roomId -> { playlist, queueIndex, state, currentTime, lastUpdate, interval }
         this.videosPath = null; // Caminho da pasta de vídeos
         this.videosRoute = '/videos'; // Rota HTTP para os vídeos
     }
@@ -93,7 +95,13 @@ export class VideoServer {
     }
 
     setupWebSocket(server) {
-        this.wss = new WebSocketServer({ server });
+        this.wss = new WebSocketServer({ noServer: true });
+
+        server.on('upgrade', (request, socket, head) => {
+            this.wss.handleUpgrade(request, socket, head, (ws) => {
+                this.wss.emit('connection', ws, request);
+            });
+        });
 
         this.wss.on('connection', (ws) => {
             ws.userId = crypto.randomUUID();
@@ -107,6 +115,251 @@ export class VideoServer {
             });
         });
     }
+
+    // ==================== HEADLESS YOUTUBE SERVER ====================
+    
+    _extractYtId(urlOrId) {
+        if (!urlOrId) return null;
+        const match = urlOrId.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+        return match ? match[1] : urlOrId;
+    }
+
+    youtubeParty(roomId, playlist) {
+        if (this.youtubeRooms.has(roomId)) {
+            this.stopYoutubeParty(roomId);
+        }
+
+        let ids = [];
+        if (Array.isArray(playlist)) {
+            ids = playlist.map(v => this._extractYtId(v)).filter(Boolean);
+        } else {
+            const singleId = this._extractYtId(playlist);
+            if (singleId) ids = [singleId];
+        }
+
+        if (ids.length === 0) return;
+
+        const state = {
+            playlist: ids,
+            queueIndex: 0,
+            status: 'PLAYING',
+            currentTime: 0,
+            lastUpdate: Date.now(),
+            interval: null,
+            lastJump: 0
+        };
+
+        state.interval = setInterval(() => {
+            if (state.status === 'PLAYING') {
+                const now = Date.now();
+                const delta = (now - state.lastUpdate) / 1000;
+                state.currentTime += delta;
+                state.lastUpdate = now;
+            }
+
+            const videoId = state.playlist[state.queueIndex];
+            const payload = {
+                action: state.status === 'PLAYING' ? 'sync' : 'pause',
+                time: state.currentTime,
+                videoId: videoId
+            };
+            
+            this.broadcastToRoom(roomId, 'server', { type: EVENTS.YOUTUBE_SYNC, payload });
+        }, 2000);
+
+        this.youtubeRooms.set(roomId, state);
+    }
+
+    youtubeQueue(roomId, urlOrId) {
+        const state = this.youtubeRooms.get(roomId);
+        if (!state) return;
+        const vid = this._extractYtId(urlOrId);
+        if (vid) state.playlist.push(vid);
+    }
+
+    youtubePlay(roomId) {
+        const state = this.youtubeRooms.get(roomId);
+        if (!state || state.status === 'PLAYING') return;
+        state.status = 'PLAYING';
+        state.lastUpdate = Date.now();
+        this.broadcastToRoom(roomId, 'server', { 
+            type: EVENTS.YOUTUBE_SYNC, 
+            payload: { action: 'play', time: state.currentTime, videoId: state.playlist[state.queueIndex] } 
+        });
+    }
+
+    youtubePause(roomId) {
+        const state = this.youtubeRooms.get(roomId);
+        if (!state || state.status === 'PAUSED') return;
+        state.currentTime += (Date.now() - state.lastUpdate) / 1000;
+        state.status = 'PAUSED';
+        this.broadcastToRoom(roomId, 'server', { 
+            type: EVENTS.YOUTUBE_SYNC, 
+            payload: { action: 'pause', time: state.currentTime, videoId: state.playlist[state.queueIndex] } 
+        });
+    }
+
+    youtubeSeek(roomId, time) {
+        const state = this.youtubeRooms.get(roomId);
+        if (!state) return;
+        state.currentTime = time;
+        state.lastUpdate = Date.now();
+        this.broadcastToRoom(roomId, 'server', { 
+            type: EVENTS.YOUTUBE_SYNC, 
+            payload: { action: 'seek', time: state.currentTime, videoId: state.playlist[state.queueIndex] } 
+        });
+    }
+
+    youtubeNext(roomId) {
+        const state = this.youtubeRooms.get(roomId);
+        if (!state) return;
+        
+        const now = Date.now();
+        if (now - state.lastJump < 3000) return; // Debounce de 3s
+        state.lastJump = now;
+
+        if (state.queueIndex < state.playlist.length - 1) {
+            state.queueIndex++;
+            state.currentTime = 0;
+            state.lastUpdate = Date.now();
+            this.broadcastToRoom(roomId, 'server', { 
+                type: EVENTS.YOUTUBE_SYNC, 
+                payload: { action: 'sync', time: state.currentTime, videoId: state.playlist[state.queueIndex] } 
+            });
+        }
+    }
+
+    stopYoutubeParty(roomId) {
+        const state = this.youtubeRooms.get(roomId);
+        if (state) {
+            if (state.interval) clearInterval(state.interval);
+            this.broadcastToRoom(roomId, 'server', { 
+                type: EVENTS.YOUTUBE_SYNC, 
+                payload: { action: 'pause', time: state.currentTime, videoId: state.playlist[state.queueIndex] } 
+            });
+            this.youtubeRooms.delete(roomId);
+        }
+    }
+
+    // =================================================================
+
+    // ==================== HEADLESS FILE SERVER (VOD SYNC) ====================
+
+    fileParty(roomId, playlist) {
+        if (this.fileRooms.has(roomId)) {
+            this.stopFileParty(roomId);
+        }
+
+        let urls = [];
+        if (Array.isArray(playlist)) {
+            urls = playlist;
+        } else {
+            urls = [playlist];
+        }
+
+        if (urls.length === 0) return;
+
+        const state = {
+            playlist: urls,
+            queueIndex: 0,
+            status: 'PLAYING',
+            currentTime: 0,
+            lastUpdate: Date.now(),
+            interval: null,
+            lastJump: 0
+        };
+
+        state.interval = setInterval(() => {
+            if (state.status === 'PLAYING') {
+                const now = Date.now();
+                const delta = (now - state.lastUpdate) / 1000;
+                state.currentTime += delta;
+                state.lastUpdate = now;
+            }
+
+            const url = state.playlist[state.queueIndex];
+            const payload = {
+                action: state.status === 'PLAYING' ? 'sync' : 'pause',
+                time: state.currentTime,
+                url: url
+            };
+            
+            this.broadcastToRoom(roomId, 'server', { type: EVENTS.FILE_SYNC, payload });
+        }, 2000);
+
+        this.fileRooms.set(roomId, state);
+    }
+
+    fileQueue(roomId, url) {
+        const state = this.fileRooms.get(roomId);
+        if (state && url) state.playlist.push(url);
+    }
+
+    filePlay(roomId) {
+        const state = this.fileRooms.get(roomId);
+        if (!state || state.status === 'PLAYING') return;
+        state.status = 'PLAYING';
+        state.lastUpdate = Date.now();
+        this.broadcastToRoom(roomId, 'server', { 
+            type: EVENTS.FILE_SYNC, 
+            payload: { action: 'play', time: state.currentTime, url: state.playlist[state.queueIndex] } 
+        });
+    }
+
+    filePause(roomId) {
+        const state = this.fileRooms.get(roomId);
+        if (!state || state.status === 'PAUSED') return;
+        state.currentTime += (Date.now() - state.lastUpdate) / 1000;
+        state.status = 'PAUSED';
+        this.broadcastToRoom(roomId, 'server', { 
+            type: EVENTS.FILE_SYNC, 
+            payload: { action: 'pause', time: state.currentTime, url: state.playlist[state.queueIndex] } 
+        });
+    }
+
+    fileSeek(roomId, time) {
+        const state = this.fileRooms.get(roomId);
+        if (!state) return;
+        state.currentTime = time;
+        state.lastUpdate = Date.now();
+        this.broadcastToRoom(roomId, 'server', { 
+            type: EVENTS.FILE_SYNC, 
+            payload: { action: 'seek', time: state.currentTime, url: state.playlist[state.queueIndex] } 
+        });
+    }
+
+    fileNext(roomId) {
+        const state = this.fileRooms.get(roomId);
+        if (!state) return;
+        
+        const now = Date.now();
+        if (now - state.lastJump < 3000) return;
+        state.lastJump = now;
+
+        if (state.queueIndex < state.playlist.length - 1) {
+            state.queueIndex++;
+            state.currentTime = 0;
+            state.lastUpdate = Date.now();
+            this.broadcastToRoom(roomId, 'server', { 
+                type: EVENTS.FILE_SYNC, 
+                payload: { action: 'sync', time: state.currentTime, url: state.playlist[state.queueIndex] } 
+            });
+        }
+    }
+
+    stopFileParty(roomId) {
+        const state = this.fileRooms.get(roomId);
+        if (state) {
+            if (state.interval) clearInterval(state.interval);
+            this.broadcastToRoom(roomId, 'server', { 
+                type: EVENTS.FILE_SYNC, 
+                payload: { action: 'pause', time: state.currentTime, url: state.playlist[state.queueIndex] } 
+            });
+            this.fileRooms.delete(roomId);
+        }
+    }
+
+    // =================================================================
 
     // ==================== HTTP (Streaming de Vídeo) ====================
 
@@ -321,6 +574,19 @@ export class VideoServer {
                     this.forwardSignal(ws, type, payload);
                     break;
                 case EVENTS.YOUTUBE_SYNC:
+                    if (payload && payload.action === 'ended') {
+                        this.youtubeNext(ws.roomId);
+                    } else {
+                        this.broadcastToRoom(ws.roomId, ws.userId, { type, payload });
+                    }
+                    break;
+                case EVENTS.FILE_SYNC:
+                    if (payload && payload.action === 'ended') {
+                        this.fileNext(ws.roomId);
+                    } else {
+                        this.broadcastToRoom(ws.roomId, ws.userId, { type, payload });
+                    }
+                    break;
                 case EVENTS.LIVE_POSTER:
                     this.broadcastToRoom(ws.roomId, ws.userId, { type, payload });
                     break;

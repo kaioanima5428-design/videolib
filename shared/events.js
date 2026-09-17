@@ -18,5 +18,6 @@ export const EVENTS = {
     LIVE_VIEWER_LEFT: 'live:viewer_left',
     LIVE_ENDED: 'live:ended',
     YOUTUBE_SYNC: 'youtube-sync',
-    LIVE_POSTER: 'live:poster'
+    LIVE_POSTER: 'live:poster',
+    FILE_SYNC: 'file-sync'
 };

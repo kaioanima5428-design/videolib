@@ -582,7 +582,14 @@ A classe estática principal que você importa no cliente.
 ---
 
 ## 🏗️ Fases de Desenvolvimento do Projeto
-
+| `server.youtubeParty(roomId, playlist)` | Inicia uma Watch Party Headless do YouTube (sem streamer cliente) com uma URL ou Array de URLs. |
+| `server.youtubeQueue(roomId, url)` | Adiciona um vídeo do YouTube na fila da Watch Party. |
+| `server.youtubePlay(roomId)` / `Pause` / `Seek` | Controles da Watch Party Headless do YouTube. |
+| `server.stopYoutubeParty(roomId)` | Encerra a Watch Party Headless do YouTube. |
+| `server.fileParty(roomId, playlist)` | Inicia uma sessão Headless de VOD Sync (arquivos locais na rota `/videos`) a partir de URL ou Array. |
+| `server.fileQueue(roomId, url)` | Adiciona um arquivo à fila Headless. |
+| `server.filePlay(roomId)` / `Pause` / `Seek` | Controles da reprodução do VOD Sync. |
+| `server.stopFileParty(roomId)` | Encerra a sessão VOD Sync Headless. |
 - [x] **Fase 1:** Chamada 1x1
 - [x] **Fase 2:** Salas com múltiplos participantes (Mesh P2P)
 - [x] **Fase 3:** Controles avançados de mídia (mute, câmera, tela)

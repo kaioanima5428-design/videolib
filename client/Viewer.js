@@ -118,11 +118,48 @@ export class Viewer extends SimpleEventEmitter {
                             if (iframe) iframe.style.pointerEvents = 'none';
 
                             this._applyYtSync(payload);
+                        },
+                        'onStateChange': (event) => {
+                            if (event.data === YT.PlayerState.ENDED) {
+                                this.signaling.send(EVENTS.YOUTUBE_SYNC, { action: 'ended' });
+                            }
                         }
                     }
                 });
             } else if (this.ytPlayer && this.ytPlayer.seekTo) {
                 this._applyYtSync(payload);
+            }
+        });
+
+        this.signaling.on(EVENTS.FILE_SYNC, (payload) => {
+            if (!this.videoElement) return;
+
+            if (this.videoElement.srcObject) {
+                this.videoElement.srcObject = null; // Desliga P2P se houver
+            }
+
+            // Impede que o espectador pause ou interaja com o vídeo (TV Mode)
+            this.videoElement.controls = false;
+            this.videoElement.style.pointerEvents = 'none';
+
+            // Atualiza URL se for diferente
+            const currentSrc = this.videoElement.src || '';
+            if (!currentSrc.includes(payload.url)) {
+                this.videoElement.src = payload.url;
+            }
+
+            // Sync de tempo
+            const currentTime = this.videoElement.currentTime || 0;
+            const timeDiff = Math.abs(currentTime - payload.time);
+            
+            if (timeDiff > 2 || payload.action === 'seek') {
+                this.videoElement.currentTime = payload.time;
+            }
+
+            if (payload.action === 'play' || payload.action === 'sync') {
+                this.videoElement.play().catch(e => console.warn('Autoplay block:', e));
+            } else if (payload.action === 'pause') {
+                this.videoElement.pause();
             }
         });
 
@@ -157,6 +194,13 @@ export class Viewer extends SimpleEventEmitter {
         if (this.remoteStream) {
             videoElement.srcObject = this.remoteStream;
         }
+
+        // Listener para VOD Sync (avisa o servidor que o vídeo acabou)
+        this.videoElement.addEventListener('ended', () => {
+            if (this.signaling) {
+                this.signaling.send(EVENTS.FILE_SYNC, { action: 'ended' });
+            }
+        });
     }
 
     youtube(containerElement) {
