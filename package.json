@@ -1,20 +1,36 @@
 {
-  "name": "videolib",
+  "name": "@caiomultiversando/videolib",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A abstração definitiva para WebRTC e Vídeo. Adicione chamadas 1x1, salas P2P, lives e VOD ao seu app com facilidade.",
+  "main": "client/index.js",
   "exports": {
     ".": "./client/index.js",
     "./server": "./server/index.js"
   },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
+  "scripts": {
+    "start:example": "node example/server.js",
+    "start:public": "python3 -m http.server 8081 -d public",
+    "test": "echo \"Testes serão implementados em breve\" && exit 0"
+  },
+  "keywords": [
+    "webrtc",
+    "video",
+    "audio",
+    "p2p",
+    "mesh",
+    "live",
+    "streaming",
+    "vod",
+    "signaling",
+    "websocket"
+  ],
+  "author": "Caio",
+  "license": "MIT",
   "dependencies": {
     "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

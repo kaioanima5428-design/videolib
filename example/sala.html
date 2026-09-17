@@ -3,18 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Lib - Sala Múltipla</title>
+    <title>Video Lib - Sala com Controles</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
+        h1 { margin-bottom: 16px; }
+
+        .controls { 
+            display: flex; justify-content: center; gap: 10px; 
+            margin-bottom: 20px; flex-wrap: wrap;
+        }
+        button { 
+            padding: 10px 20px; font-size: 14px; cursor: pointer; 
+            background: #0066cc; color: white; border: none; border-radius: 6px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0055aa; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.active { background: #cc3333; }
+
         .videos { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 20px; }
-        .video-container { display: flex; flex-direction: column; align-items: center; }
+        .video-container { display: flex; flex-direction: column; align-items: center; gap: 6px; }
         video { background: #000; border-radius: 8px; max-width: 300px; width: 100%; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 4px; }
+
+        .status { 
+            margin-top: 10px; padding: 8px 16px; 
+            background: #2a2a2a; border-radius: 6px; 
+            font-size: 13px; color: #aaa; display: inline-block;
+        }
     </style>
 </head>
 <body>
-    <h1>Teste - Sala Múltipla</h1>
-    <button id="startBtn">Entrar na Sala</button>
+    <h1>Teste - Sala com Controles de Mídia</h1>
+    
+    <div class="controls">
+        <button id="startBtn">Entrar na Sala</button>
+        <button id="muteBtn" disabled>🎤 Mutar</button>
+        <button id="cameraBtn" disabled>📷 Desligar Câmera</button>
+        <button id="screenBtn" disabled>🖥️ Compartilhar Tela</button>
+    </div>
+    <div class="status" id="statusBar">Aguardando...</div>
+
     <div class="videos" id="videoGrid">
         <div class="video-container" id="localContainer" style="display: none;">
             <h3>Você (Local)</h3>
@@ -26,53 +55,56 @@
         import { Video } from '/client/index.js';
 
         const startBtn = document.getElementById('startBtn');
+        const muteBtn = document.getElementById('muteBtn');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const screenBtn = document.getElementById('screenBtn');
         const localVideo = document.getElementById('localVideo');
         const localContainer = document.getElementById('localContainer');
         const videoGrid = document.getElementById('videoGrid');
+        const statusBar = document.getElementById('statusBar');
+
+        let sala = null;
+        let isMuted = false;
+        let isCameraOff = false;
+        let isScreenSharing = false;
+
+        function setStatus(msg) {
+            statusBar.textContent = msg;
+        }
 
         startBtn.addEventListener('click', async () => {
             startBtn.disabled = true;
+            setStatus('Conectando...');
             
-            // Cria a abstração da sala
-            const sala = await Video.sala('sala-reuniao');
+            sala = await Video.sala('sala-reuniao');
 
-            // Quando alguém entrar
             sala.on('entrar', (usuario) => {
-                console.log('Usuário entrou:', usuario.id);
+                setStatus(`Usuário ${usuario.id.substring(0, 5)} entrou!`);
             });
 
-            // Quando alguém sair, removemos o vídeo dele
             sala.on('sair', (usuario) => {
-                console.log('Usuário saiu:', usuario.id);
+                setStatus(`Usuário ${usuario.id.substring(0, 5)} saiu.`);
                 const container = document.getElementById(`container-${usuario.id}`);
-                if (container) {
-                    container.remove();
-                }
+                if (container) container.remove();
             });
 
-            // Quando receber vídeo de alguém, adiciona na tela
             sala.on('video', ({ usuario, stream }) => {
                 let container = document.getElementById(`container-${usuario.id}`);
-                
                 if (!container) {
                     container = document.createElement('div');
                     container.className = 'video-container';
                     container.id = `container-${usuario.id}`;
-                    
                     const label = document.createElement('h3');
                     label.innerText = `Usuário: ${usuario.id.substring(0, 5)}`;
-                    
                     const videoEl = document.createElement('video');
                     videoEl.id = `video-${usuario.id}`;
                     videoEl.autoplay = true;
                     videoEl.playsInline = true;
                     videoEl.srcObject = stream;
-
                     container.appendChild(label);
                     container.appendChild(videoEl);
                     videoGrid.appendChild(container);
                 } else {
-                    // Atualiza o stream caso o container já exista e receba um novo track
                     const videoEl = document.getElementById(`video-${usuario.id}`);
                     if (videoEl && videoEl.srcObject !== stream) {
                         videoEl.srcObject = stream;
@@ -80,13 +112,78 @@
                 }
             });
 
-            // 1. Pede câmera e exibe
+            sala.on('tela:parou', () => {
+                isScreenSharing = false;
+                screenBtn.textContent = '🖥️ Compartilhar Tela';
+                screenBtn.classList.remove('active');
+                setStatus('Compartilhamento de tela encerrado. Voltou para câmera.');
+            });
+
             localContainer.style.display = 'flex';
             await sala.camera(localVideo);
             await sala.microfone();
-
-            // 2. Entra na sala (Mesh P2P inicia as conexões)
             await sala.entrar();
+
+            muteBtn.disabled = false;
+            cameraBtn.disabled = false;
+            screenBtn.disabled = false;
+            setStatus('Conectado! Esperando participantes...');
+        });
+
+        // ========== BOTÃO MUTAR ==========
+        muteBtn.addEventListener('click', () => {
+            if (!sala) return;
+            isMuted = !isMuted;
+            if (isMuted) {
+                sala.mute();
+                muteBtn.textContent = '🔇 Desmutar';
+                muteBtn.classList.add('active');
+                setStatus('Microfone mutado.');
+            } else {
+                sala.desmutar();
+                muteBtn.textContent = '🎤 Mutar';
+                muteBtn.classList.remove('active');
+                setStatus('Microfone ativado.');
+            }
+        });
+
+        // ========== BOTÃO CÂMERA ==========
+        cameraBtn.addEventListener('click', () => {
+            if (!sala) return;
+            isCameraOff = !isCameraOff;
+            if (isCameraOff) {
+                sala.pausarCamera();
+                cameraBtn.textContent = '📷 Ligar Câmera';
+                cameraBtn.classList.add('active');
+                setStatus('Câmera desligada.');
+            } else {
+                sala.retomarCamera();
+                cameraBtn.textContent = '📷 Desligar Câmera';
+                cameraBtn.classList.remove('active');
+                setStatus('Câmera ligada.');
+            }
+        });
+
+        // ========== BOTÃO COMPARTILHAR TELA ==========
+        screenBtn.addEventListener('click', async () => {
+            if (!sala) return;
+            if (!isScreenSharing) {
+                try {
+                    await sala.tela();
+                    isScreenSharing = true;
+                    screenBtn.textContent = '🖥️ Parar Compartilhamento';
+                    screenBtn.classList.add('active');
+                    setStatus('Compartilhando tela...');
+                } catch (e) {
+                    setStatus('Compartilhamento de tela cancelado.');
+                }
+            } else {
+                await sala.pararTela();
+                isScreenSharing = false;
+                screenBtn.textContent = '🖥️ Compartilhar Tela';
+                screenBtn.classList.remove('active');
+                setStatus('Compartilhamento encerrado. Voltou para câmera.');
+            }
         });
     </script>
 </body>

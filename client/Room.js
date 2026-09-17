@@ -25,6 +25,11 @@ export class Room extends SimpleEventEmitter {
         this.peers = new Map(); // userId -> RTCPeerConnection
         this.peerQueues = new Map(); // userId -> Promise queue
         this.localStream = null;
+        this.localVideoElement = null;
+        this.audioTrack = null;
+        this.videoTrack = null;
+        this.screenStream = null;
+        this.originalVideoTrack = null; // Guarda a trilha da câmera quando compartilha tela
     }
 
     async queueForPeer(userId, action) {
@@ -38,10 +43,26 @@ export class Room extends SimpleEventEmitter {
 
     async entrar() {
         await this.signaling.connect();
+
+        // Eventos de reconexão
+        this.signaling.on('reconnecting', (info) => {
+            this.emit('reconectando', info);
+        });
+        this.signaling.on('reconnected', () => {
+            // Limpa peers antigos, o ROOM_JOINED vai recriá-los
+            for (const [userId, peer] of this.peers) {
+                peer.close();
+            }
+            this.peers.clear();
+            this.peerQueues.clear();
+            this.emit('reconectado');
+        });
+        this.signaling.on('error', (info) => {
+            this.emit('erro', info);
+        });
         
         this.signaling.on(EVENTS.ROOM_JOINED, (payload) => {
             console.log('Joined room:', this.roomId, 'My ID:', payload.userId);
-            // Initiate connection to all users already in the room
             for (const userId of payload.users) {
                 this.initiateCall(userId);
             }
@@ -50,7 +71,6 @@ export class Room extends SimpleEventEmitter {
         this.signaling.on(EVENTS.USER_JOINED, (payload) => {
             console.log('User joined room:', payload.userId);
             this.emit('entrar', { id: payload.userId });
-            // The other person will initiate the call, we just wait for the offer
         });
 
         this.signaling.on(EVENTS.USER_LEFT, (payload) => {
@@ -149,22 +169,120 @@ export class Room extends SimpleEventEmitter {
             peer.close();
             this.peers.delete(userId);
         }
+        this.peerQueues.delete(userId);
     }
+
+    // ==================== CONTROLES DE MÍDIA ====================
 
     async camera(videoElement) {
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            
+            // Salva referências individuais às trilhas
+            this.videoTrack = this.localStream.getVideoTracks()[0] || null;
+            this.audioTrack = this.localStream.getAudioTracks()[0] || null;
+            
             if (videoElement) {
+                this.localVideoElement = videoElement;
                 videoElement.srcObject = this.localStream;
                 videoElement.muted = true; 
             }
         } catch (error) {
-            console.error('Não foi possível acessar a câmera e microfone:', error);
-            throw error;
+            throw new Error('Não foi possível acessar a câmera: ' + error.message);
         }
     }
 
-    async microfone() {
-        console.log("Microfone ativado junto com a câmera.");
+    async microfone(habilitar = true) {
+        if (this.audioTrack) {
+            this.audioTrack.enabled = habilitar;
+        }
+    }
+
+    mute() {
+        if (this.audioTrack) {
+            this.audioTrack.enabled = false;
+        }
+    }
+
+    desmutar() {
+        if (this.audioTrack) {
+            this.audioTrack.enabled = true;
+        }
+    }
+
+    pausarCamera() {
+        if (this.videoTrack) {
+            this.videoTrack.enabled = false;
+        }
+    }
+
+    retomarCamera() {
+        if (this.videoTrack) {
+            this.videoTrack.enabled = true;
+        }
+    }
+
+    async tela(videoElement) {
+        try {
+            this.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            const screenTrack = this.screenStream.getVideoTracks()[0];
+
+            // Guarda a trilha original da câmera para restaurar depois
+            this.originalVideoTrack = this.videoTrack;
+
+            // Substitui a trilha de vídeo em TODAS as conexões peer ativas
+            for (const peer of this.peers.values()) {
+                const senders = peer.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                    await videoSender.replaceTrack(screenTrack);
+                }
+            }
+
+            // Atualiza a exibição local (se um elemento foi passado ou se já havia um)
+            const targetElement = videoElement || this.localVideoElement;
+            if (targetElement) {
+                targetElement.srcObject = this.screenStream;
+            }
+
+            this.videoTrack = screenTrack;
+
+            // Detecta quando o usuário para de compartilhar a tela pelo botão do navegador
+            screenTrack.onended = async () => {
+                await this.pararTela();
+            };
+
+        } catch (error) {
+            throw new Error('Não foi possível compartilhar a tela: ' + error.message);
+        }
+    }
+
+    async pararTela() {
+        if (!this.originalVideoTrack) return;
+
+        // Restaura a trilha da câmera em todas as conexões peer
+        for (const peer of this.peers.values()) {
+            const senders = peer.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender) {
+                await videoSender.replaceTrack(this.originalVideoTrack);
+            }
+        }
+
+        // Para as trilhas do screenStream
+        if (this.screenStream) {
+            this.screenStream.getTracks().forEach(t => t.stop());
+            this.screenStream = null;
+        }
+
+        // Restaura a exibição local
+        this.videoTrack = this.originalVideoTrack;
+        this.originalVideoTrack = null;
+
+        if (this.localVideoElement) {
+            this.localVideoElement.srcObject = this.localStream;
+        }
+
+        this.emit('tela:parou');
     }
 }

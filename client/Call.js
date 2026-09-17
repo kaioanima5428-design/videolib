@@ -8,11 +8,32 @@ export class Call {
         this.peerConnection = null;
         this.localStream = null;
         this.remoteStream = null;
+        this.remoteUserId = null;
         this.onVideoCallback = null;
+        this.localVideoElement = null;
+        this.audioTrack = null;
+        this.videoTrack = null;
+        this.screenStream = null;
+        this.originalVideoTrack = null;
     }
 
     async entrar() {
         await this.signaling.connect();
+
+        // Eventos de reconexão
+        this.signaling.on('reconnecting', (info) => {
+            if (this.onReconnectingCallback) this.onReconnectingCallback(info);
+        });
+        this.signaling.on('reconnected', () => {
+            if (this.peerConnection) {
+                this.peerConnection.close();
+                this.peerConnection = null;
+            }
+            if (this.onReconnectedCallback) this.onReconnectedCallback();
+        });
+        this.signaling.on('error', (info) => {
+            if (this.onErrorCallback) this.onErrorCallback(info);
+        });
         
         this.signaling.on(EVENTS.ROOM_JOINED, (payload) => {
             console.log('Joined room:', this.roomId);
@@ -98,12 +119,26 @@ export class Call {
         }
     }
 
+    onVideo(callback) {
+        this.onVideoCallback = callback;
+        if (this.remoteStream) {
+            callback(this.remoteStream);
+        }
+    }
+
+    // ==================== CONTROLES DE MÍDIA ====================
+
     async camera(videoElement) {
         try {
-            this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); // Audio included for simplicity here
+            this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            
+            this.videoTrack = this.localStream.getVideoTracks()[0] || null;
+            this.audioTrack = this.localStream.getAudioTracks()[0] || null;
+            
             if (videoElement) {
+                this.localVideoElement = videoElement;
                 videoElement.srcObject = this.localStream;
-                videoElement.muted = true; // Mute local video to prevent echo
+                videoElement.muted = true;
             }
 
             if (this.peerConnection) {
@@ -112,21 +147,92 @@ export class Call {
                 });
             }
         } catch (error) {
-            console.error('Não foi possível acessar a câmera e microfone:', error);
-            throw error;
+            throw new Error('Não foi possível acessar a câmera: ' + error.message);
         }
     }
 
-    async microfone() {
-        // In Phase 1, we include audio with the camera request.
-        // We'll separate this properly in Phase 3.
-        console.log("Microfone ativado junto com a câmera na Fase 1.");
+    async microfone(habilitar = true) {
+        if (this.audioTrack) {
+            this.audioTrack.enabled = habilitar;
+        }
     }
-    
-    onVideo(callback) {
-        this.onVideoCallback = callback;
-        if (this.remoteStream) {
-            callback(this.remoteStream);
+
+    mute() {
+        if (this.audioTrack) {
+            this.audioTrack.enabled = false;
+        }
+    }
+
+    desmutar() {
+        if (this.audioTrack) {
+            this.audioTrack.enabled = true;
+        }
+    }
+
+    pausarCamera() {
+        if (this.videoTrack) {
+            this.videoTrack.enabled = false;
+        }
+    }
+
+    retomarCamera() {
+        if (this.videoTrack) {
+            this.videoTrack.enabled = true;
+        }
+    }
+
+    async tela(videoElement) {
+        try {
+            this.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            const screenTrack = this.screenStream.getVideoTracks()[0];
+
+            this.originalVideoTrack = this.videoTrack;
+
+            if (this.peerConnection) {
+                const senders = this.peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                    await videoSender.replaceTrack(screenTrack);
+                }
+            }
+
+            const targetElement = videoElement || this.localVideoElement;
+            if (targetElement) {
+                targetElement.srcObject = this.screenStream;
+            }
+
+            this.videoTrack = screenTrack;
+
+            screenTrack.onended = async () => {
+                await this.pararTela();
+            };
+
+        } catch (error) {
+            throw new Error('Não foi possível compartilhar a tela: ' + error.message);
+        }
+    }
+
+    async pararTela() {
+        if (!this.originalVideoTrack) return;
+
+        if (this.peerConnection) {
+            const senders = this.peerConnection.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender) {
+                await videoSender.replaceTrack(this.originalVideoTrack);
+            }
+        }
+
+        if (this.screenStream) {
+            this.screenStream.getTracks().forEach(t => t.stop());
+            this.screenStream = null;
+        }
+
+        this.videoTrack = this.originalVideoTrack;
+        this.originalVideoTrack = null;
+
+        if (this.localVideoElement) {
+            this.localVideoElement.srcObject = this.localStream;
         }
     }
 }

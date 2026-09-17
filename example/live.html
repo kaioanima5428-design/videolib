@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Lib - Live Streaming</title>
+    <style>
+        body { font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; background: #111; color: white; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        input { padding: 10px; font-size: 16px; border: 1px solid #333; background: #222; color: white; border-radius: 4px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-stream { background: #e50914; color: white; }
+        .btn-view { background: #0078d4; color: white; }
+        .btn-stop { background: #333; color: white; }
+        video { width: 100%; max-height: 500px; background: black; border-radius: 8px; margin-bottom: 10px; }
+        #status { padding: 10px; background: #222; border-radius: 4px; font-family: monospace; }
+        .status-error { color: #ff4444; }
+        .status-success { color: #00C851; }
+        .status-warning { color: #ffbb33; }
+    </style>
+</head>
+<body>
+    <h1>🔴 Live Streaming</h1>
+    
+    <div class="controls">
+        <input type="text" id="liveId" value="live-teste-123" placeholder="ID da Live" />
+        <button class="btn-stream" id="btnStream">Transmetir (Streamer)</button>
+        <button class="btn-view" id="btnView">Assistir (Viewer)</button>
+        <button class="btn-stop" id="btnStop" style="display:none;">Encerrar / Sair</button>
+    </div>
+
+    <div id="status">Aguardando ação...</div>
+
+    <video id="player" autoplay playsinline></video>
+
+    <div id="viewersCount" style="display:none; color: #888;">Espectadores: <span id="vCount">0</span></div>
+
+    <script type="module">
+        import { Video } from '/client/index.js';
+
+        // Configura o cliente para apontar para o nosso servidor local
+        Video.configure({ signalingUrl: 'ws://localhost:3000' });
+
+        const btnStream = document.getElementById('btnStream');
+        const btnView = document.getElementById('btnView');
+        const btnStop = document.getElementById('btnStop');
+        const inputLiveId = document.getElementById('liveId');
+        const player = document.getElementById('player');
+        const statusEl = document.getElementById('status');
+        const viewersCountEl = document.getElementById('viewersCount');
+        const vCountEl = document.getElementById('vCount');
+
+        let currentLive = null;
+        let viewers = 0;
+
+        function setStatus(msg, type = '') {
+            statusEl.textContent = msg;
+            statusEl.className = type ? `status-${type}` : '';
+        }
+
+        function toggleButtons(active) {
+            btnStream.style.display = active ? 'none' : 'block';
+            btnView.style.display = active ? 'none' : 'block';
+            btnStop.style.display = active ? 'block' : 'none';
+            inputLiveId.disabled = active;
+        }
+
+        // ================= STREAMER =================
+        btnStream.addEventListener('click', async () => {
+            try {
+                setStatus('Iniciando live...', 'warning');
+                const liveId = inputLiveId.value;
+                
+                currentLive = await Video.live(liveId);
+                
+                // Reconexão
+                currentLive.on('reconectando', (info) => setStatus(`Conexão perdida. Tentando reconectar (${info.attempt}/${info.maxAttempts})...`, 'warning'));
+                currentLive.on('reconectado', () => setStatus('✅ Reconectado! Live ativa.', 'success'));
+                currentLive.on('erro', (info) => setStatus(`❌ Erro crítico: ${info.message}`, 'error'));
+                
+                // Viewers
+                currentLive.on('espectador:entrou', () => { viewers++; vCountEl.textContent = viewers; });
+                currentLive.on('espectador:saiu', () => { viewers--; vCountEl.textContent = viewers; });
+
+                player.muted = true; // Streamer não pode ouvir a si mesmo
+                await currentLive.camera(player);
+                await currentLive.microfone();
+                await currentLive.iniciar();
+
+                setStatus('✅ Live INICIADA! Compartilhe o ID para que outros assistam.', 'success');
+                toggleButtons(true);
+                viewersCountEl.style.display = 'block';
+                viewers = 0;
+                vCountEl.textContent = '0';
+            } catch (err) {
+                setStatus(`❌ Erro ao iniciar live: ${err.message}`, 'error');
+            }
+        });
+
+        // ================= VIEWER =================
+        btnView.addEventListener('click', async () => {
+            try {
+                setStatus('Conectando à live...', 'warning');
+                const liveId = inputLiveId.value;
+                
+                currentLive = await Video.assistir(liveId);
+                
+                // Reconexão
+                currentLive.on('reconectando', (info) => setStatus(`Conexão perdida. Tentando reconectar (${info.attempt}/${info.maxAttempts})...`, 'warning'));
+                currentLive.on('reconectado', () => setStatus('✅ Reconectado! Assistindo live.', 'success'));
+                currentLive.on('erro', (info) => setStatus(`❌ Erro crítico: ${info.message}`, 'error'));
+
+                currentLive.on('encerrado', () => {
+                    setStatus('⏹️ A live foi encerrada pelo streamer.', 'warning');
+                    btnStop.click();
+                });
+
+                currentLive.video(player);
+                await currentLive.conectar();
+
+                setStatus('✅ Assistindo a live!', 'success');
+                toggleButtons(true);
+            } catch (err) {
+                setStatus(`❌ Erro ao assistir live: ${err.message}`, 'error');
+            }
+        });
+
+        // ================= STOP =================
+        btnStop.addEventListener('click', async () => {
+            if (currentLive) {
+                if (currentLive.parar) {
+                    await currentLive.parar(); // Streamer
+                } else if (currentLive.sair) {
+                    currentLive.sair(); // Viewer
+                }
+                currentLive = null;
+            }
+            player.srcObject = null;
+            setStatus('Desconectado.');
+            toggleButtons(false);
+            viewersCountEl.style.display = 'none';
+        });
+
+    </script>
+</body>
+</html>

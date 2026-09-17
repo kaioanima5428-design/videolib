@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Lib - A abstração definitiva para WebRTC e Vídeo</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Prism.js for Syntax Highlighting (Dark Theme) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-color: #27272a;
+            --accent: #ffffff;
+            --accent-hover: #e4e4e7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navbar */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
+        .nav-btn {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn:hover {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 6rem 1rem 4rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(180deg, #fff 0%, #a1a1aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            font-weight: 400;
+        }
+
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.875rem 1.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: #52525b;
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        /* macOS Window Mockup */
+        .mac-window {
+            background: #111111;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 800px;
+            margin: 0 auto 5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: left;
+        }
+
+        .mac-header {
+            background: #1a1a1a;
+            padding: 0.75rem 1rem;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .mac-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .mac-dot.red { background: #ff5f56; }
+        .mac-dot.yellow { background: #ffbd2e; }
+        .mac-dot.green { background: #27c93f; }
+
+        .mac-body {
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .mac-body pre {
+            margin: 0 !important;
+            background: transparent !important;
+            padding: 0 !important;
+            font-size: 0.95rem;
+        }
+
+        /* Environment Badges (Front vs Back) */
+        .env-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .env-front { 
+            background: rgba(59, 130, 246, 0.15); 
+            color: #60a5fa; 
+            border: 1px solid rgba(59, 130, 246, 0.3); 
+        }
+        .env-back { 
+            background: rgba(16, 185, 129, 0.15); 
+            color: #34d399; 
+            border: 1px solid rgba(16, 185, 129, 0.3); 
+        }
+
+        /* Features Section */
+        .features {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 4rem;
+        }
+
+        .feature-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .feature-block:nth-child(even) {
+            direction: rtl;
+        }
+        .feature-block:nth-child(even) > * {
+            direction: ltr;
+        }
+
+        .feature-text h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+        }
+
+        .feature-text p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-visual {
+            background: #111;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Visual Mocks */
+        .mock-video-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+        .mock-video {
+            background: #222;
+            border-radius: 8px;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 2rem;
+        }
+        .mock-live {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .mock-live-main {
+            background: #222;
+            border-radius: 8px;
+            flex: 1;
+            position: relative;
+        }
+        .mock-live-badge {
+            position: absolute;
+            top: 10px; left: 10px;
+            background: #e50914;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .mock-chat {
+            display: flex;
+            gap: 10px;
+        }
+        .mock-avatar { width: 30px; height: 30px; border-radius: 50%; background: #333; }
+        .mock-msg { background: #222; border-radius: 8px; height: 30px; flex: 1; }
+
+        .mock-file {
+            width: 100%;
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            color: #666;
+        }
+        .mock-file-icon { font-size: 3rem; margin-bottom: 10px; }
+
+        /* CDN Section */
+        .cdn-section {
+            max-width: 800px;
+            margin: 0 auto 6rem;
+            text-align: center;
+            padding: 0 2rem;
+        }
+
+        .cdn-section h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .cdn-section p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .copy-box {
+            background: #111;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 4rem 1rem 1rem;
+            position: relative;
+            text-align: left;
+            font-family: monospace;
+            color: #a1a1aa;
+            overflow-x: auto;
+        }
+
+        .copy-box .url { color: #fff; }
+
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #222;
+            border: 1px solid #333;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .copy-btn:hover { background: #333; }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .feature-block { grid-template-columns: 1fr !important; }
+            .feature-block:nth-child(even) { direction: ltr; }
+            .hero h1 { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">video-lib</div>
+        <div class="nav-links">
+            <a href="#recursos">Por que usar?</a>
+            <a href="#exemplos">Exemplos</a>
+            <a href="#cdn">Instalação</a>
+        </div>
+        <a href="https://github.com/seu-usuario/video-lib" class="nav-btn" target="_blank">GitHub</a>
+    </nav>
+
+    <section class="hero">
+        <h1>A ponte mais simples entre<br>Vídeo e a sua Aplicação.</h1>
+        <p>Adicione chamadas 1x1, salas de reunião, lives para milhares de pessoas e upload/streaming de vídeos com pouquíssimas linhas de código. Sem se preocupar com WebRTC ou Servidores Complexos.</p>
+        
+        <div class="hero-buttons">
+            <a href="#cdn" class="btn btn-primary">Começar agora</a>
+            <a href="#exemplos" class="btn btn-secondary">Descubra a diferença</a>
+        </div>
+    </section>
+
+    <!-- Code Mockup -->
+    <div style="max-width: 800px; margin: 0 auto; text-align: left;">
+        <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+    </div>
+    <div class="mac-window">
+        <div class="mac-header">
+            <div class="mac-dot red"></div>
+            <div class="mac-dot yellow"></div>
+            <div class="mac-dot green"></div>
+        </div>
+        <div class="mac-body">
+<pre><code class="language-javascript">import { Video } from 'video-lib';
+
+// Criar uma Live Stream (Streamer)
+const live = await Video.live("minha-super-live");
+
+// Ligar câmera e microfone
+await live.camera(document.getElementById('meuVideo'));
+await live.microfone();
+
+// Pronto! Estamos ao vivo.
+await live.iniciar();</code></pre>
+        </div>
+    </div>
+
+    <section id="exemplos" class="features">
+        
+        <!-- Feature 1: Salas -->
+        <div class="feature-block">
+            <div class="feature-text">
+                <h2>Salas e Chamadas</h2>
+                <p>Crie chamadas 1x1 ou salas de reunião em malha (Mesh P2P) onde todos se veem. A biblioteca gerencia toda a sinalização e reconexões automaticamente se a internet cair.</p>
+                
+                <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+                <div class="mac-window" style="margin: 0;">
+                    <div class="mac-header">
+                        <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+                    </div>
+                    <div class="mac-body" style="padding: 1rem;">
+<pre><code class="language-javascript">const sala = await Video.sala("reuniao-equipe");
+await sala.entrar();
+
+sala.on('video', ({ usuario, stream }) => {
+  // Novo participante chegou!
+  anexarVideoNaTela(usuario.id, stream);
+});</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-visual">
+                <div class="mock-video-grid">
+                    <div class="mock-video">👩‍💻</div>
+                    <div class="mock-video">👨‍💻</div>
+                    <div class="mock-video">🧑‍𩸽</div>
+                    <div class="mock-video">👨‍🦰</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 2: Live -->
+        <div class="feature-block">
+            <div class="feature-visual">
+                <div class="mock-live">
+                    <div class="mock-live-main">
+                        <div class="mock-live-badge">LIVE</div>
+                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:3rem;">🎮</div>
+                    </div>
+                    <div class="mock-chat">
+                        <div class="mock-avatar"></div>
+                        <div class="mock-msg"></div>
+                    </div>
+                    <div class="mock-chat">
+                        <div class="mock-avatar"></div>
+                        <div class="mock-msg" style="width: 60%; flex:none;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-text">
+                <h2>Transmissões ao Vivo</h2>
+                <p>Um transmite, muitos assistem. Economize banda usando o modo Live, onde espectadores apenas recebem o fluxo de dados sem sobrecarregar a rede do Streamer.</p>
+                <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+                <div class="mac-window" style="margin: 0;">
+                    <div class="mac-header">
+                        <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+                    </div>
+                    <div class="mac-body" style="padding: 1rem;">
+<pre><code class="language-javascript">// No cliente que vai apenas assistir:
+const live = await Video.assistir("gameplay-lol");
+
+live.video(document.getElementById('player'));
+await live.conectar();</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 3: VOD / Files -->
+        <div class="feature-block">
+            <div class="feature-text">
+                <h2>VOD, Upload e Download</h2>
+                <p>Não é só tempo real. O servidor embutido lida com arquivos físicos. Faça upload, liste vídeos e reproduza com suporte nativo a HTTP Range Requests (permite avançar o vídeo sem baixar tudo).</p>
+                <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+                <div class="mac-window" style="margin: 0;">
+                    <div class="mac-header">
+                        <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+                    </div>
+                    <div class="mac-body" style="padding: 1rem;">
+<pre><code class="language-javascript">// Enviar um arquivo do input file
+await Video.enviar(arquivoSelecionado);
+
+// Reproduzir direto do servidor
+await Video.reproduzir(urlDoVideo, player);</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-visual">
+                <div class="mock-file">
+                    <div class="mock-file-icon">☁️</div>
+                    <div style="font-weight:bold; color:white; margin-bottom:5px;">video_apresentacao.mp4</div>
+                    <div style="font-size:0.9rem;">Enviando... 45%</div>
+                    <div style="margin-top:15px; height:4px; background:#333; border-radius:2px; overflow:hidden;">
+                        <div style="width:45%; height:100%; background:white;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    </section>
+
+    <!-- Full Documentation Section -->
+    <section id="documentacao" class="docs-section" style="max-width: 1000px; margin: 0 auto 6rem; padding: 0 2rem;">
+        <div style="text-align: center; margin-bottom: 4rem;">
+            <h2 style="font-size: 2.5rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 1rem;">Mergulhe Fundo</h2>
+            <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Tudo o que você precisa saber sobre o backend, controles avançados de mídia e referências da API.</p>
+        </div>
+
+        <div class="doc-block" style="margin-bottom: 4rem;">
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">O Servidor de Sinalização (Backend)</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Para que os navegadores conversem entre si, precisamos de um servidor Node.js intermediário. A videolib faz o setup pesado para você.</p>
+            <span class="env-badge env-back">⚙️ Backend (Node.js)</span>
+            <div class="mac-window" style="margin: 0;">
+                <div class="mac-header">
+                    <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+                </div>
+                <div class="mac-body" style="padding: 1rem;">
+<pre><code class="language-javascript">import express from 'express';
+import { VideoServer } from '@caiomultiversando/videolib/server';
+
+const app = express();
+app.get('/', (req, res) => res.send('Meu App Express!'));
+
+// 1. Sobe seu servidor normal
+const httpServer = app.listen(3000);
+
+// 2. Acopla o VideoServer nele (Sem conflito de portas!)
+const video = new VideoServer();
+video.videos('./meus-videos'); // Serve arquivos para VOD
+video.anexar(httpServer);</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-block" style="margin-bottom: 4rem;">
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Controles Avançados (Mute, Câmera e Tela)</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">A manipulação de mídia funciona em tempo real. Você pode substituir a câmera pela tela do PC sem derrubar a chamada.</p>
+            <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+            <div class="mac-window" style="margin: 0;">
+                <div class="mac-header">
+                    <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+                </div>
+                <div class="mac-body" style="padding: 1rem;">
+<pre><code class="language-javascript">// Mutar e Desmutar microfone
+sala.mute();
+sala.desmutar();
+
+// Pausar o próprio vídeo (imagem preta)
+sala.pausarCamera();
+sala.retomarCamera();
+
+// Compartilhar a tela do PC (Substitui a câmera local)
+await sala.tela();
+
+// Voltar para a câmera normal
+await sala.pararTela();</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-block" style="margin-bottom: 4rem;">
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Reconexão Automática (Backoff)</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">A internet caiu? O usuário trocou do 4G para o Wi-Fi? A biblioteca tenta se reconectar sozinha e reentra nas salas.</p>
+            <span class="env-badge env-front">💻 Frontend (Navegador)</span>
+            <div class="mac-window" style="margin: 0;">
+                <div class="mac-header">
+                    <div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>
+                </div>
+                <div class="mac-body" style="padding: 1rem;">
+<pre><code class="language-javascript">sala.on("reconectando", (info) => {
+  console.log(`Conexão perdida. Tentando novamente... ${info.attempt}/${info.maxAttempts}`);
+});
+
+sala.on("reconectado", () => {
+  console.log("Restaurado! Estamos de volta à sala.");
+});</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-block">
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Referência da API Frontend</h3>
+            <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+                    <thead style="background: #111;">
+                        <tr>
+                            <th style="padding: 1rem; border-bottom: 1px solid var(--border-color);">Método / Classe</th>
+                            <th style="padding: 1rem; border-bottom: 1px solid var(--border-color);">Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.configure(opts)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Configura o WebSocket e URL do servidor.</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.chamada(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cria uma Call P2P 1x1.</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.sala(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cria uma Room P2P (Mesh).</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.live(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cria uma transmissão ao vivo (Streamer).</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.assistir(id)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Acessa uma transmissão (Viewer - Apenas recebe dados).</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.reproduzir(url)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Faz streaming (VOD) de um vídeo com suporte a saltos (seeking).</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color);"><code>Video.enviar(arquivo)</code></td>
+                            <td style="padding: 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Faz upload multipart de um File.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section id="cdn" class="cdn-section">
+        <h2>Pronto para usar?</h2>
+        <p>Basta importar a biblioteca diretamente no seu projeto via CDN. Não requer bundlers se você não quiser.</p>
+        
+        <div class="copy-box">
+            &lt;script type="module"&gt;<br>
+            &nbsp;&nbsp;import { Video } from "<span class="url" id="cdnUrl">http://localhost:3000/client/index.js</span>";<br><br>
+            &nbsp;&nbsp;Video.configure({ signalingUrl: "ws://localhost:3000" });<br>
+            &lt;/script&gt;
+            <button class="copy-btn" onclick="copiar()">Copiar</button>
+        </div>
+    </section>
+
+    <footer style="text-align:center; padding: 2rem; color: #666; border-top: 1px solid var(--border-color);">
+        <p>© 2026 Video Lib. Feito para facilitar a vida do dev.</p>
+    </footer>
+
+    <!-- Prism.js for Syntax Highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+
+    <script>
+        // Define a URL base dinamicamente para o script de cópia
+        const baseUrl = window.location.origin;
+        document.getElementById('cdnUrl').textContent = `${baseUrl}/client/index.js`;
+
+        function copiar() {
+            const code = `<script type="module">\n  import { Video } from "${baseUrl}/client/index.js";\n\n  Video.configure({ signalingUrl: "ws://${window.location.host}" });\n<\/script>`;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copiado!';
+                setTimeout(() => btn.textContent = 'Copiar', 2000);
+            });
+        }
+    </script>
+</body>
+</html>
