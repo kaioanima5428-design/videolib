@@ -98,9 +98,15 @@ export class VideoServer {
         this.wss = new WebSocketServer({ noServer: true });
 
         server.on('upgrade', (request, socket, head) => {
-            this.wss.handleUpgrade(request, socket, head, (ws) => {
-                this.wss.emit('connection', ws, request);
-            });
+            const pathname = request.url.split('?')[0];
+
+            // Só processa o upgrade se a rota for nossa ('/' ou '/videolib')
+            // Isso evita quebrar o Socket.io ou outras libs do dev que usam Websocket
+            if (pathname === '/' || pathname === '/videolib') {
+                this.wss.handleUpgrade(request, socket, head, (ws) => {
+                    this.wss.emit('connection', ws, request);
+                });
+            }
         });
 
         this.wss.on('connection', (ws) => {

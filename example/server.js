@@ -50,3 +50,10 @@ exampleServer.listen(8080, () => {
 const videoServer = new VideoServer();
 videoServer.videos(videosDir); // Serve vídeos da pasta example/videos/
 videoServer.start(3000);
+
+// Cria um Canal de TV Headless para testes automáticos
+// Quando alguém entrar na sala "tv", já vai ver o YouTube sincronizado!
+videoServer.youtubeParty('tv', [
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://www.youtube.com/watch?v=jNQXAC9IVRw'
+]);
