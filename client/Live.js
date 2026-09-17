@@ -1,5 +1,6 @@
 import { SignalingClient } from './SignalingClient.js';
 import { EVENTS } from '../shared/events.js';
+import { loadYoutubeApi } from './youtube.js';
 
 class SimpleEventEmitter {
     constructor() { this.events = new Map(); }
@@ -18,7 +19,8 @@ export class Live extends SimpleEventEmitter {
     constructor(liveId, signalingUrl) {
         super();
         this.liveId = liveId;
-        this.signaling = new SignalingClient(signalingUrl);
+        this.signalingUrl = signalingUrl || 'ws://localhost:3000';
+        this.signaling = new SignalingClient(this.signalingUrl);
         this.viewers = new Map(); // viewerId -> RTCPeerConnection
         this.localStream = null;
         this.localVideoElement = null;
@@ -26,6 +28,17 @@ export class Live extends SimpleEventEmitter {
         this.videoTrack = null;
         this.screenStream = null;
         this.originalVideoTrack = null;
+        this.isScreenSharing = false;
+
+        // Estado da fila de vídeos
+        this.videoQueue = [];
+        this.queueIndex = 0;
+        this.isLooping = false;
+        this._onVideoEnded = null;
+
+        // Estado do YouTube Watch Party
+        this.ytPlayer = null;
+        this._ytSyncInterval = null;
     }
 
     async iniciar() {
@@ -113,12 +126,24 @@ export class Live extends SimpleEventEmitter {
         });
     }
 
-    async parar() {
+    async parar(viewerId = null) {
+        if (viewerId) {
+            const peer = this.viewers.get(viewerId);
+            if (peer) {
+                peer.close();
+                this.viewers.delete(viewerId);
+            }
+            return;
+        }
+
         for (const peer of this.viewers.values()) peer.close();
         this.viewers.clear();
         if (this.localStream) {
             this.localStream.getTracks().forEach(t => t.stop());
         }
+        if (this._ytSyncInterval) clearInterval(this._ytSyncInterval);
+        if (this.ytPlayer && this.ytPlayer.destroy) this.ytPlayer.destroy();
+        
         this.signaling.disconnect();
         this.emit('encerrado');
     }
@@ -137,6 +162,31 @@ export class Live extends SimpleEventEmitter {
             }
         } catch (error) {
             throw new Error('Não foi possível acessar a câmera: ' + error.message);
+        }
+    }
+
+    async transmitirVideo(videoElement) {
+        try {
+            const captureFn = videoElement.captureStream || videoElement.mozCaptureStream;
+            if (!captureFn) throw new Error("O navegador não suporta captureStream.");
+            
+            this.localStream = captureFn.call(videoElement);
+            this.videoTrack = this.localStream.getVideoTracks()[0] || null;
+            this.audioTrack = this.localStream.getAudioTracks()[0] || null;
+            this.localVideoElement = videoElement;
+
+            for (const peer of this.viewers.values()) {
+                if (this.videoTrack) {
+                    const videoSender = peer.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) await videoSender.replaceTrack(this.videoTrack);
+                }
+                if (this.audioTrack) {
+                    const audioSender = peer.getSenders().find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) await audioSender.replaceTrack(this.audioTrack);
+                }
+            }
+        } catch (error) {
+            throw new Error('Não foi possível capturar o vídeo: ' + error.message);
         }
     }
 
@@ -186,14 +236,143 @@ export class Live extends SimpleEventEmitter {
         this.emit('tela:parou');
     }
 
+    // ==================== FILA DE VÍDEOS (QUEUE) ====================
+    adicionarNaFila(arquivoOuUrl) {
+        this.videoQueue.push(arquivoOuUrl);
+    }
+
+    removerDaFila(index) {
+        this.videoQueue.splice(index, 1);
+    }
+
+    loopFila(ativo) {
+        this.isLooping = ativo;
+    }
+
+    async iniciarFila(videoElement) {
+        if (this.videoQueue.length === 0) throw new Error("A fila está vazia.");
+        this.localVideoElement = videoElement;
+        
+        if (this._onVideoEnded) {
+            videoElement.removeEventListener('ended', this._onVideoEnded);
+        }
+
+        this._onVideoEnded = async () => {
+            this.queueIndex++;
+            if (this.queueIndex >= this.videoQueue.length) {
+                if (this.isLooping) {
+                    this.queueIndex = 0;
+                } else {
+                    return; // Fim da fila
+                }
+            }
+            await this._tocarVideoAtual(videoElement);
+        };
+        videoElement.addEventListener('ended', this._onVideoEnded);
+        
+        this.queueIndex = 0;
+        await this._tocarVideoAtual(videoElement);
+    }
+
+    async _tocarVideoAtual(videoElement) {
+        const item = this.videoQueue[this.queueIndex];
+        let fileUrl = item;
+        if (item instanceof File) {
+            fileUrl = URL.createObjectURL(item);
+        }
+        
+        videoElement.srcObject = null;
+        videoElement.src = fileUrl;
+        
+        // Aguarda carregar os metadados para garantir que o vídeo pode ser tocado e capturado
+        await new Promise((resolve, reject) => {
+            videoElement.onloadedmetadata = resolve;
+            videoElement.onerror = reject;
+        });
+
+        await videoElement.play();
+        await this.transmitirVideo(videoElement);
+        this.emit('fila:mudou', { index: this.queueIndex, item });
+    }
+
+    // ==================== YOUTUBE WATCH PARTY ====================
+    async youtube(containerElement, videoIdOuArray) {
+        const YT = await loadYoutubeApi();
+        
+        // Extrai o ID do(s) link(s)
+        const videos = Array.isArray(videoIdOuArray) ? videoIdOuArray : [videoIdOuArray];
+        const finalIds = videos.map(vid => {
+            if (vid.includes('youtube.com') || vid.includes('youtu.be')) {
+                const url = new URL(vid);
+                return url.searchParams.get('v') || url.pathname.slice(1);
+            }
+            return vid;
+        });
+
+        const mainVideoId = finalIds[0];
+        const playlistStr = finalIds.join(',');
+
+        const playerDiv = document.createElement('div');
+        containerElement.appendChild(playerDiv);
+
+        return new Promise((resolve) => {
+            this.ytPlayer = new YT.Player(playerDiv, {
+                videoId: mainVideoId,
+                playerVars: { 
+                    'playsinline': 1, 
+                    'controls': 1,
+                    'loop': 1,
+                    'playlist': playlistStr 
+                },
+                events: {
+                    'onReady': () => {
+                        resolve(this.ytPlayer);
+                        
+                        // Sincronização Periódica para seeks
+                        if (this._ytSyncInterval) clearInterval(this._ytSyncInterval);
+                        this._ytSyncInterval = setInterval(() => {
+                            if (this.ytPlayer && this.ytPlayer.getPlayerState) {
+                                const state = this.ytPlayer.getPlayerState();
+                                if (state === YT.PlayerState.PLAYING) {
+                                    const time = this.ytPlayer.getCurrentTime();
+                                    const currVid = this.ytPlayer.getVideoData().video_id;
+                                    this.signaling.send(EVENTS.YOUTUBE_SYNC, { action: 'sync', time, videoId: currVid });
+                                }
+                            }
+                        }, 2000);
+                    },
+                    'onStateChange': (event) => {
+                        const state = event.data;
+                        const time = this.ytPlayer.getCurrentTime();
+                        const currVid = this.ytPlayer.getVideoData().video_id;
+                        let action = '';
+
+                        if (state === YT.PlayerState.PLAYING) action = 'play';
+                        else if (state === YT.PlayerState.PAUSED) action = 'pause';
+
+                        if (action) {
+                            this.signaling.send(EVENTS.YOUTUBE_SYNC, { action, time, videoId: currVid });
+                        }
+                    }
+                }
+            });
+        });
+    }
+
     // ==================== ALIASES EM INGLÊS ====================
     async start() { return this.iniciar(); }
-    async stop() { return this.parar(); }
+    async stop(id = null) { return this.parar(id); }
     async video(videoElement) { return this.camera(videoElement); }
+    async streamVideo(videoElement) { return this.transmitirVideo(videoElement); }
     async audio(enable = true) { return this.microfone(enable); }
     unmute() { return this.desmutar(); }
     pauseVideo() { return this.pausarCamera(); }
     resumeVideo() { return this.retomarCamera(); }
     async screen(videoElement) { return this.tela(videoElement); }
     async stopScreen() { return this.pararTela(); }
+    
+    enqueue(file) { this.adicionarNaFila(file); }
+    dequeue(index) { this.removerDaFila(index); }
+    loopQueue(active) { this.loopFila(active); }
+    async startQueue(videoElement) { return this.iniciarFila(videoElement); }
 }

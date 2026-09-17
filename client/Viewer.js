@@ -1,5 +1,6 @@
 import { SignalingClient } from './SignalingClient.js';
 import { EVENTS } from '../shared/events.js';
+import { loadYoutubeApi } from './youtube.js';
 
 class SimpleEventEmitter {
     constructor() { this.events = new Map(); }
@@ -22,6 +23,10 @@ export class Viewer extends SimpleEventEmitter {
         this.peerConnection = null;
         this.remoteStream = null;
         this.videoElement = null;
+        
+        // YouTube Watch Party
+        this.ytContainer = null;
+        this.ytPlayer = null;
     }
 
     async conectar() {
@@ -89,7 +94,50 @@ export class Viewer extends SimpleEventEmitter {
             this.emit('encerrado');
         });
 
+        this.signaling.on(EVENTS.YOUTUBE_SYNC, async (payload) => {
+            if (!this.ytPlayer && this.ytContainer) {
+                if (this.videoElement) this.videoElement.style.display = 'none';
+                
+                const YT = await loadYoutubeApi();
+                const playerDiv = document.createElement('div');
+                this.ytContainer.appendChild(playerDiv);
+                
+                this.ytPlayer = new YT.Player(playerDiv, {
+                    videoId: payload.videoId,
+                    playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1 },
+                    events: {
+                        'onReady': () => this._applyYtSync(payload)
+                    }
+                });
+            } else if (this.ytPlayer && this.ytPlayer.seekTo) {
+                this._applyYtSync(payload);
+            }
+        });
+
         this.signaling.send(EVENTS.LIVE_JOIN, { liveId: this.liveId });
+    }
+
+    _applyYtSync(payload) {
+        if (!this.ytPlayer || !this.ytPlayer.seekTo) return;
+        
+        const currentVid = this.ytPlayer.getVideoData ? this.ytPlayer.getVideoData().video_id : null;
+        if (currentVid && currentVid !== payload.videoId) {
+            this.ytPlayer.loadVideoById(payload.videoId, payload.time);
+            return;
+        }
+
+        const currentTime = this.ytPlayer.getCurrentTime();
+        const timeDiff = Math.abs(currentTime - payload.time);
+        
+        if (timeDiff > 2 || payload.action === 'seek') {
+            this.ytPlayer.seekTo(payload.time, true);
+        }
+
+        if (payload.action === 'play') {
+            this.ytPlayer.playVideo();
+        } else if (payload.action === 'pause') {
+            this.ytPlayer.pauseVideo();
+        }
     }
 
     video(videoElement) {
@@ -97,6 +145,10 @@ export class Viewer extends SimpleEventEmitter {
         if (this.remoteStream) {
             videoElement.srcObject = this.remoteStream;
         }
+    }
+
+    youtube(containerElement) {
+        this.ytContainer = containerElement;
     }
 
     sair() {

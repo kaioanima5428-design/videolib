@@ -325,6 +325,64 @@ sala.on('tela:parou', () => {
 
 ---
 
+## 📺 Fila de Vídeos (Playlist / TV)
+
+Você pode transformar uma Live ou Sala em um "Canal de TV" utilizando o recurso de Fila de Vídeos embutido. A biblioteca gerencia a lista, troca de vídeo automaticamente e suporta repetição em Loop.
+
+```javascript
+const live = await Video.live("tv-123");
+
+// 1. Adicione os vídeos (aceita objetos File ou URLs de blob)
+live.adicionarNaFila(arquivo1);
+live.adicionarNaFila(arquivo2);
+
+// 2. Quer que a fila toque em loop infinito?
+live.loopFila(true);
+
+// 3. Inicia a reprodução e transmissão no seu player
+await live.iniciarFila(document.getElementById('player'));
+await live.iniciar();
+
+// Escute quando o vídeo mudar
+live.on('fila:mudou', ({ index, item }) => {
+    console.log(`Tocando agora o vídeo ${index + 1}: ${item.name}`);
+});
+```
+
+---
+
+## 🍿 YouTube Watch Party
+
+Transmitir vídeos do YouTube usando WebRTC puramente é bloqueado pelos navegadores (CORS). Mas a nossa biblioteca implementa o padrão de "Watch Party" de forma totalmente nativa usando a **API de Iframes do YouTube** integrada à sinalização P2P.
+
+- O Streamer cola o link do vídeo, e a biblioteca carrega o YouTube.
+- Os Viewers carregam o mesmo vídeo na máquina deles.
+- A biblioteca intercepta **Play, Pause e Seeks (pular o tempo)** do Streamer e envia para todos os Viewers quase que instantaneamente.
+
+```javascript
+// O container precisa ser uma <div> vazia
+const containerYt = document.getElementById('youtube-container');
+
+// ====== No Streamer ======
+const live = await Video.live("minha-watch-party");
+// Você pode passar um link ou um Array de links! 
+// Por padrão a biblioteca já coloca a playlist em loop automático.
+await live.youtube(containerYt, [
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "https://www.youtube.com/watch?v=outrolink"
+]);
+await live.iniciar();
+
+// ====== No Espectador (Viewer) ======
+const viewer = await Video.assistir("minha-watch-party");
+viewer.youtube(containerYt); // Fala pra biblioteca onde colocar o Iframe do YT se rolar sync
+await viewer.conectar();
+```
+
+> **Dica**: O pacote cuidará sozinho do carregamento da API oficial do YouTube Iframe para você.
+
+---
+
 ## 🎬 Streaming de Vídeo (VOD)
 
 A biblioteca também inclui funcionalidades para **servir, reproduzir, fazer upload e baixar** arquivos de vídeo.
@@ -465,6 +523,7 @@ A classe estática principal que você importa no cliente.
 | `call.desmutar()` | Reativa o microfone. |
 | `call.pausarCamera()` | Desativa a trilha de vídeo (imagem congela). |
 | `call.retomarCamera()` | Reativa a trilha de vídeo. |
+| `await call.transmitirVideo(videoEl)` | Captura a mídia (áudio/vídeo) de um arquivo de vídeo tocando em um `<video>` e transmite no lugar da câmera. |
 | `await call.tela(videoEl?)` | Compartilha a tela, substituindo a câmera. |
 | `await call.pararTela()` | Para o compartilhamento e restaura a câmera. |
 | `call.onVideo(callback)` | Define o callback que recebe o `MediaStream` remoto. |
@@ -480,8 +539,13 @@ A classe estática principal que você importa no cliente.
 | `room.desmutar()` | Reativa o microfone. |
 | `room.pausarCamera()` | Desativa a trilha de vídeo. |
 | `room.retomarCamera()` | Reativa a trilha de vídeo. |
+| `await room.transmitirVideo(videoEl)` | Captura a mídia (áudio/vídeo) de um arquivo de vídeo tocando em um `<video>` e transmite no lugar da câmera. |
 | `await room.tela(videoEl?)` | Compartilha a tela, substituindo a câmera em todos os peers. |
 | `await room.pararTela()` | Para o compartilhamento e restaura a câmera. |
+| `room.adicionarNaFila(arquivo)` | Adiciona um arquivo à fila de reprodução (Playlist). |
+| `room.loopFila(ativo)` | Habilita/desabilita o loop da playlist. |
+| `await room.iniciarFila(videoEl)` | Inicia a reprodução da fila no player e transmite. |
+| `await live.youtube(div, url)` | (Live/Viewer) Inicializa a API do YouTube no `div` indicado e faz a sincronização de "Watch Party". |
 | `room.on(evento, callback)` | Assina eventos da sala (veja abaixo). |
 | `await room.entrar()` | Inicia a conexão à malha P2P. |
 

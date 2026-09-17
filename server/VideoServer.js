@@ -314,6 +314,9 @@ export class VideoServer {
                 case EVENTS.SIGNAL_ICE_CANDIDATE:
                     this.forwardSignal(ws, type, payload);
                     break;
+                case EVENTS.YOUTUBE_SYNC:
+                    this.broadcastToRoom(ws.roomId, ws.userId, { type, payload });
+                    break;
                 default:
                     console.warn('Unknown message type:', type);
             }

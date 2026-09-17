@@ -22,16 +22,40 @@
 <body>
     <h1>🔴 Live Streaming</h1>
     
-    <div class="controls">
+    <div class="controls" id="startControls">
         <input type="text" id="liveId" value="live-teste-123" placeholder="ID da Live" />
-        <button class="btn-stream" id="btnStream">Transmetir (Streamer)</button>
+        <button class="btn-stream" id="btnStreamCam">Transmitir Câmera</button>
         <button class="btn-view" id="btnView">Assistir (Viewer)</button>
+    </div>
+
+    <div class="controls" id="fileControls">
+        <span style="color: #888; font-size: 14px;">Ou transmita arquivos:</span>
+        <input type="file" id="videoFile" accept="video/*" multiple />
+        <label style="color:white; display:flex; align-items:center; gap:5px;">
+            <input type="checkbox" id="loopCheck" /> Loop
+        </label>
+        <button class="btn-stream" id="btnStreamFile">Transmitir Fila</button>
+    </div>
+
+    <div class="controls" id="ytControls">
+        <span style="color: #ff0000; font-weight: bold; font-size: 14px;">Ou YouTube Party:</span>
+        <input type="text" id="ytUrl" placeholder="Link do YouTube" />
+        <button class="btn-stream" style="background:#ff0000;" id="btnStreamYt">Transmitir YouTube</button>
+    </div>
+    
+    <div class="controls">
         <button class="btn-stop" id="btnStop" style="display:none;">Encerrar / Sair</button>
+    </div>
+
+    <div id="playlist" style="display:none; margin-bottom: 20px; background: #222; padding: 10px; border-radius: 4px;">
+        <h3>Fila de Reprodução</h3>
+        <ul id="playlistItems" style="list-style:none; padding:0; margin:0; color:#ccc;"></ul>
     </div>
 
     <div id="status">Aguardando ação...</div>
 
     <video id="player" autoplay playsinline></video>
+    <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; margin-bottom: 10px;"></div>
 
     <div id="viewersCount" style="display:none; color: #888;">Espectadores: <span id="vCount">0</span></div>
 
@@ -41,7 +65,7 @@
         // Configura o cliente para apontar para o nosso servidor local
         Video.configure({ signalingUrl: 'ws://localhost:3000' });
 
-        const btnStream = document.getElementById('btnStream');
+        const btnStreamCam = document.getElementById('btnStreamCam');
         const btnView = document.getElementById('btnView');
         const btnStop = document.getElementById('btnStop');
         const inputLiveId = document.getElementById('liveId');
@@ -49,6 +73,18 @@
         const statusEl = document.getElementById('status');
         const viewersCountEl = document.getElementById('viewersCount');
         const vCountEl = document.getElementById('vCount');
+        
+        const fileControls = document.getElementById('fileControls');
+        const startControls = document.getElementById('startControls');
+        const videoFile = document.getElementById('videoFile');
+        const btnStreamFile = document.getElementById('btnStreamFile');
+        const loopCheck = document.getElementById('loopCheck');
+        const playlist = document.getElementById('playlist');
+        const playlistItems = document.getElementById('playlistItems');
+        const ytControls = document.getElementById('ytControls');
+        const ytUrl = document.getElementById('ytUrl');
+        const btnStreamYt = document.getElementById('btnStreamYt');
+        const ytPlayerContainer = document.getElementById('ytPlayerContainer');
 
         let currentLive = null;
         let viewers = 0;
@@ -59,41 +95,116 @@
         }
 
         function toggleButtons(active) {
-            btnStream.style.display = active ? 'none' : 'block';
-            btnView.style.display = active ? 'none' : 'block';
+            startControls.style.display = active ? 'none' : 'flex';
+            fileControls.style.display = active ? 'none' : 'flex';
+            ytControls.style.display = active ? 'none' : 'flex';
             btnStop.style.display = active ? 'block' : 'none';
-            inputLiveId.disabled = active;
         }
 
-        // ================= STREAMER =================
-        btnStream.addEventListener('click', async () => {
+        async function setupLiveEvents(liveInstance) {
+            liveInstance.on('reconectando', (info) => setStatus(`Conexão perdida. Tentando reconectar (${info.attempt}/${info.maxAttempts})...`, 'warning'));
+            liveInstance.on('reconectado', () => setStatus('✅ Reconectado! Live ativa.', 'success'));
+            liveInstance.on('erro', (info) => setStatus(`❌ Erro crítico: ${info.message}`, 'error'));
+            
+            liveInstance.on('espectador:entrou', () => { viewers++; vCountEl.textContent = viewers; });
+            liveInstance.on('espectador:saiu', () => { viewers--; vCountEl.textContent = viewers; });
+
+            // Evento da fila
+            liveInstance.on('fila:mudou', ({ index, item }) => {
+                const lis = playlistItems.querySelectorAll('li');
+                lis.forEach((li, i) => {
+                    li.style.color = i === index ? '#00C851' : '#ccc';
+                    li.style.fontWeight = i === index ? 'bold' : 'normal';
+                });
+                setStatus(`▶️ Tocando: ${item.name || 'Vídeo ' + (index + 1)}`, 'success');
+            });
+        }
+
+        // ================= STREAM CÂMERA =================
+        btnStreamCam.addEventListener('click', async () => {
             try {
-                setStatus('Iniciando live...', 'warning');
-                const liveId = inputLiveId.value;
-                
-                currentLive = await Video.live(liveId);
-                
-                // Reconexão
-                currentLive.on('reconectando', (info) => setStatus(`Conexão perdida. Tentando reconectar (${info.attempt}/${info.maxAttempts})...`, 'warning'));
-                currentLive.on('reconectado', () => setStatus('✅ Reconectado! Live ativa.', 'success'));
-                currentLive.on('erro', (info) => setStatus(`❌ Erro crítico: ${info.message}`, 'error'));
-                
-                // Viewers
-                currentLive.on('espectador:entrou', () => { viewers++; vCountEl.textContent = viewers; });
-                currentLive.on('espectador:saiu', () => { viewers--; vCountEl.textContent = viewers; });
+                setStatus('Iniciando live (Câmera)...', 'warning');
+                currentLive = await Video.live(inputLiveId.value);
+                await setupLiveEvents(currentLive);
 
                 player.muted = true; // Streamer não pode ouvir a si mesmo
                 await currentLive.camera(player);
                 await currentLive.microfone();
                 await currentLive.iniciar();
 
-                setStatus('✅ Live INICIADA! Compartilhe o ID para que outros assistam.', 'success');
+                setStatus('✅ Live INICIADA com Câmera! Compartilhe o ID para que outros assistam.', 'success');
                 toggleButtons(true);
                 viewersCountEl.style.display = 'block';
                 viewers = 0;
                 vCountEl.textContent = '0';
             } catch (err) {
                 setStatus(`❌ Erro ao iniciar live: ${err.message}`, 'error');
+            }
+        });
+
+        // ================= STREAM FILA (ARQUIVOS) =================
+        btnStreamFile.addEventListener('click', async () => {
+            if (!videoFile.files.length) {
+                alert('Selecione pelo menos um arquivo de vídeo!');
+                return;
+            }
+            try {
+                setStatus('Iniciando live (Fila)...', 'warning');
+                
+                currentLive = await Video.live(inputLiveId.value);
+                await setupLiveEvents(currentLive);
+
+                // Configura a fila
+                playlistItems.innerHTML = '';
+                Array.from(videoFile.files).forEach((file, idx) => {
+                    currentLive.enqueue(file);
+                    const li = document.createElement('li');
+                    li.textContent = `${idx + 1}. ${file.name}`;
+                    playlistItems.appendChild(li);
+                });
+                currentLive.loopQueue(loopCheck.checked);
+
+                player.muted = true; // Streamer não precisa ouvir o eco
+
+                // Inicia a fila
+                await currentLive.startQueue(player);
+                await currentLive.iniciar();
+
+                setStatus('🎥 Fila INICIADA!', 'success');
+                toggleButtons(true);
+                viewersCountEl.style.display = 'block';
+                playlist.style.display = 'block';
+                viewers = 0;
+                vCountEl.textContent = '0';
+            } catch (err) {
+                setStatus(`❌ Erro ao transmitir fila: ${err.message}`, 'error');
+            }
+        });
+
+        // ================= STREAM YOUTUBE (WATCH PARTY) =================
+        btnStreamYt.addEventListener('click', async () => {
+            if (!ytUrl.value) {
+                alert('Cole o link do YouTube primeiro!');
+                return;
+            }
+            try {
+                setStatus('Iniciando live (YouTube)...', 'warning');
+                player.style.display = 'none'; // Esconde a tag <video>
+                
+                currentLive = await Video.live(inputLiveId.value);
+                await setupLiveEvents(currentLive);
+
+                // Configura o Iframe do YouTube
+                await currentLive.youtube(ytPlayerContainer, ytUrl.value);
+                await currentLive.iniciar();
+
+                setStatus('🎥 YouTube Watch Party INICIADO!', 'success');
+                toggleButtons(true);
+                viewersCountEl.style.display = 'block';
+                viewers = 0;
+                vCountEl.textContent = '0';
+            } catch (err) {
+                setStatus(`❌ Erro no YouTube Party: ${err.message}`, 'error');
             }
         });
 
@@ -116,6 +227,9 @@
                 });
 
                 currentLive.video(player);
+                // Prepara o container do youtube caso o streamer mande um yt-sync
+                currentLive.youtube(ytPlayerContainer); 
+
                 await currentLive.conectar();
 
                 setStatus('✅ Assistindo a live!', 'success');
@@ -136,9 +250,11 @@
                 currentLive = null;
             }
             player.srcObject = null;
+            player.src = '';
             setStatus('Desconectado.');
             toggleButtons(false);
             viewersCountEl.style.display = 'none';
+            playlist.style.display = 'none';
         });
 
     </script>

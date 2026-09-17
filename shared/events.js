@@ -16,5 +16,6 @@ export const EVENTS = {
     LIVE_JOINED: 'live:joined',
     LIVE_VIEWER_JOINED: 'live:viewer_joined',
     LIVE_VIEWER_LEFT: 'live:viewer_left',
-    LIVE_ENDED: 'live:ended'
+    LIVE_ENDED: 'live:ended',
+    YOUTUBE_SYNC: 'youtube-sync'
 };

@@ -213,6 +213,64 @@ await room.stopScreen();
 
 ---
 
+## 📺 Video Queue (Playlist / TV)
+
+You can turn a Live stream or Room into a "TV Channel" using the built-in Video Queue feature. The library manages the list, automatically switches videos when one ends, and supports Looping.
+
+```javascript
+const live = await Video.stream("tv-123");
+
+// 1. Add videos (accepts File objects or blob URLs)
+live.enqueue(file1);
+live.enqueue(file2);
+
+// 2. Want infinite loop?
+live.loopQueue(true);
+
+// 3. Start playback and broadcasting
+await live.startQueue(document.getElementById('player'));
+await live.start();
+
+// Listen to video changes
+live.on('fila:mudou', ({ index, item }) => {
+    console.log(`Now playing video ${index + 1}: ${item.name}`);
+});
+```
+
+---
+
+## 🍿 YouTube Watch Party
+
+Broadcasting YouTube videos via pure WebRTC is blocked by browsers due to CORS. However, our library implements a native "Watch Party" pattern using the **YouTube Iframe API** synced through our P2P signaling.
+
+- The Streamer pastes the link, and the library loads the YouTube player.
+- The Viewers load the same video locally.
+- The library intercepts **Play, Pause, and Seeks** from the Streamer and instantly syncs them to all Viewers.
+
+```javascript
+// The container must be an empty <div>
+const containerYt = document.getElementById('youtube-container');
+
+// ====== Streamer Side ======
+const live = await Video.stream("my-watch-party");
+// You can pass a single link or an Array of links!
+// The library enables auto-loop by default.
+await live.youtube(containerYt, [
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "https://www.youtube.com/watch?v=anotherlink"
+]);
+await live.start();
+
+// ====== Viewer Side ======
+const viewer = await Video.watch("my-watch-party");
+viewer.youtube(containerYt); // Tells the library where to put the YT player when a sync arrives
+await viewer.connect();
+```
+
+> **Tip**: The package will automatically fetch and load the official YouTube Iframe API scripts for you.
+
+---
+
 ## 🎬 Video Streaming (VOD)
 
 The library also handles physical video files.
@@ -249,10 +307,13 @@ await Video.download('http://localhost:3000/videos/class.mp4', 'my-class.mp4');
 ### Room / Call / Live Instances
 - `await room.join()` / `.start()` (for Live)
 - `await room.video(element)`
+- `await room.streamVideo(element)`
 - `await room.audio(true/false)`
 - `room.mute()`, `room.unmute()`
 - `room.pauseVideo()`, `room.resumeVideo()`
 - `await room.screen(element)`, `await room.stopScreen()`
+- `room.enqueue(file)`, `room.loopQueue(true/false)`, `await room.startQueue(element)`
+- `await live.youtube(div, url)` (for Watch Parties)
 
 ### VideoServer (Backend)
 - `server.videos(folderPath)`

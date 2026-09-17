@@ -15,6 +15,16 @@ export class Call {
         this.videoTrack = null;
         this.screenStream = null;
         this.originalVideoTrack = null;
+        this.isScreenSharing = false;
+
+        // Callbacks
+        this.onFilaMudouCallback = null;
+
+        // Estado da fila de vídeos
+        this.videoQueue = [];
+        this.queueIndex = 0;
+        this.isLooping = false;
+        this._onVideoEnded = null;
     }
 
     async entrar() {
@@ -88,6 +98,26 @@ export class Call {
         });
     }
 
+    async getOrCreatePeerConnection() {
+        if (!this.peerConnection) {
+            await this.createPeerConnection();
+        }
+        return this.peerConnection;
+    }
+
+    async parar(userId = null) {
+        if (this.peerConnection) {
+            this.peerConnection.close();
+            this.peerConnection = null;
+        }
+        if (!userId) {
+            if (this.localStream) {
+                this.localStream.getTracks().forEach(t => t.stop());
+            }
+            this.signaling.disconnect();
+        }
+    }
+
     async createPeerConnection() {
         if (this.peerConnection) return;
 
@@ -148,6 +178,31 @@ export class Call {
             }
         } catch (error) {
             throw new Error('Não foi possível acessar a câmera: ' + error.message);
+        }
+    }
+
+    async transmitirVideo(videoElement) {
+        try {
+            const captureFn = videoElement.captureStream || videoElement.mozCaptureStream;
+            if (!captureFn) throw new Error("O navegador não suporta captureStream.");
+            
+            this.localStream = captureFn.call(videoElement);
+            this.videoTrack = this.localStream.getVideoTracks()[0] || null;
+            this.audioTrack = this.localStream.getAudioTracks()[0] || null;
+            this.localVideoElement = videoElement;
+
+            if (this.peerConnection) {
+                if (this.videoTrack) {
+                    const videoSender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) await videoSender.replaceTrack(this.videoTrack);
+                }
+                if (this.audioTrack) {
+                    const audioSender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) await audioSender.replaceTrack(this.audioTrack);
+                }
+            }
+        } catch (error) {
+            throw new Error('Não foi possível capturar o vídeo: ' + error.message);
         }
     }
 
@@ -236,13 +291,85 @@ export class Call {
         }
     }
 
+    // ==================== FILA DE VÍDEOS (QUEUE) ====================
+    adicionarNaFila(arquivoOuUrl) {
+        this.videoQueue.push(arquivoOuUrl);
+    }
+
+    removerDaFila(index) {
+        this.videoQueue.splice(index, 1);
+    }
+
+    loopFila(ativo) {
+        this.isLooping = ativo;
+    }
+
+    async iniciarFila(videoElement) {
+        if (this.videoQueue.length === 0) throw new Error("A fila está vazia.");
+        this.localVideoElement = videoElement;
+        
+        if (this._onVideoEnded) {
+            videoElement.removeEventListener('ended', this._onVideoEnded);
+        }
+
+        this._onVideoEnded = async () => {
+            this.queueIndex++;
+            if (this.queueIndex >= this.videoQueue.length) {
+                if (this.isLooping) {
+                    this.queueIndex = 0;
+                } else {
+                    return; // Fim da fila
+                }
+            }
+            await this._tocarVideoAtual(videoElement);
+        };
+        videoElement.addEventListener('ended', this._onVideoEnded);
+        
+        this.queueIndex = 0;
+        await this._tocarVideoAtual(videoElement);
+    }
+
+    async _tocarVideoAtual(videoElement) {
+        const item = this.videoQueue[this.queueIndex];
+        let fileUrl = item;
+        if (item instanceof File) {
+            fileUrl = URL.createObjectURL(item);
+        }
+        
+        videoElement.srcObject = null;
+        videoElement.src = fileUrl;
+        
+        await new Promise((resolve, reject) => {
+            videoElement.onloadedmetadata = resolve;
+            videoElement.onerror = reject;
+        });
+
+        await videoElement.play();
+        await this.transmitirVideo(videoElement);
+        
+        if (this.onFilaMudouCallback) {
+            this.onFilaMudouCallback({ index: this.queueIndex, item });
+        }
+    }
+
+    onFilaMudou(callback) {
+        this.onFilaMudouCallback = callback;
+    }
+
     // ==================== ALIASES EM INGLÊS ====================
     async join() { return this.entrar(); }
+    async leave(id = null) { return this.parar(id); }
     async video(videoElement) { return this.camera(videoElement); }
+    async streamVideo(videoElement) { return this.transmitirVideo(videoElement); }
     async audio(enable = true) { return this.microfone(enable); }
     unmute() { return this.desmutar(); }
     pauseVideo() { return this.pausarCamera(); }
     resumeVideo() { return this.retomarCamera(); }
     async screen(videoElement) { return this.tela(videoElement); }
     async stopScreen() { return this.pararTela(); }
+    
+    enqueue(file) { this.adicionarNaFila(file); }
+    dequeue(index) { this.removerDaFila(index); }
+    loopQueue(active) { this.loopFila(active); }
+    async startQueue(videoElement) { return this.iniciarFila(videoElement); }
 }
