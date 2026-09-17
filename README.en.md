@@ -313,6 +313,8 @@ await Video.download('http://localhost:3000/videos/class.mp4', 'my-class.mp4');
 - `room.pauseVideo()`, `room.resumeVideo()`
 - `await room.screen(element)`, `await room.stopScreen()`
 - `room.enqueue(file)`, `room.loopQueue(true/false)`, `await room.startQueue(element)`
+- `await live.poster(fileOrUrl)` (Sets a cover poster for the live)
+- `await live.streamImage(fileOrUrl)` (Replaces video feed with a static image)
 - `await live.youtube(div, url)` (for Watch Parties)
 
 ### VideoServer (Backend)

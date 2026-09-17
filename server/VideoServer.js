@@ -13,6 +13,12 @@ const MIME_TYPES = {
     '.mov': 'video/quicktime',
     '.ogg': 'video/ogg',
     '.m4v': 'video/mp4',
+    // Imagens
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
 };
 
 export class VideoServer {
@@ -315,6 +321,7 @@ export class VideoServer {
                     this.forwardSignal(ws, type, payload);
                     break;
                 case EVENTS.YOUTUBE_SYNC:
+                case EVENTS.LIVE_POSTER:
                     this.broadcastToRoom(ws.roomId, ws.userId, { type, payload });
                     break;
                 default:

@@ -42,7 +42,17 @@
         <input type="text" id="ytUrl" placeholder="Link do YouTube" />
         <button class="btn-stream" style="background:#ff0000;" id="btnStreamYt">Transmitir YouTube</button>
     </div>
+
+    <div class="controls" id="coverControls" style="display:none;">
+        <span style="color: #888; font-size: 14px;">Capa da Live (Poster):</span>
+        <input type="file" id="coverFile" accept="image/*" />
+    </div>
     
+    <div class="controls" id="imageStreamControls" style="display:none;">
+        <span style="color: #888; font-size: 14px;">Stream de Imagem (Mute Video):</span>
+        <input type="file" id="imageStreamFile" accept="image/*" />
+    </div>
+
     <div class="controls">
         <button class="btn-stop" id="btnStop" style="display:none;">Encerrar / Sair</button>
     </div>
@@ -85,6 +95,12 @@
         const ytUrl = document.getElementById('ytUrl');
         const btnStreamYt = document.getElementById('btnStreamYt');
         const ytPlayerContainer = document.getElementById('ytPlayerContainer');
+        
+        const coverControls = document.getElementById('coverControls');
+        const coverFile = document.getElementById('coverFile');
+        
+        const imageStreamControls = document.getElementById('imageStreamControls');
+        const imageStreamFile = document.getElementById('imageStreamFile');
 
         let currentLive = null;
         let viewers = 0;
@@ -94,10 +110,15 @@
             statusEl.className = type ? `status-${type}` : '';
         }
 
-        function toggleButtons(active) {
+        function toggleButtons(active, isViewer = false) {
             startControls.style.display = active ? 'none' : 'flex';
             fileControls.style.display = active ? 'none' : 'flex';
             ytControls.style.display = active ? 'none' : 'flex';
+            
+            // Só exibe a opção de capa se estiver ativo e for o streamer
+            coverControls.style.display = (active && !isViewer) ? 'flex' : 'none';
+            imageStreamControls.style.display = (active && !isViewer) ? 'flex' : 'none';
+            
             btnStop.style.display = active ? 'block' : 'none';
         }
 
@@ -233,9 +254,38 @@
                 await currentLive.conectar();
 
                 setStatus('✅ Assistindo a live!', 'success');
-                toggleButtons(true);
+                toggleButtons(true, true);
             } catch (err) {
                 setStatus(`❌ Erro ao assistir live: ${err.message}`, 'error');
+            }
+        });
+
+        // ================= CAPA E IMAGEM ESTÁTICA =================
+        coverFile.addEventListener('change', async (e) => {
+            if (!currentLive) return;
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    setStatus('Fazendo upload da capa...', 'warning');
+                    await currentLive.capa(file);
+                    setStatus('✅ Capa atualizada com sucesso!', 'success');
+                } catch (err) {
+                    setStatus(`❌ Erro ao atualizar capa: ${err.message}`, 'error');
+                }
+            }
+        });
+
+        imageStreamFile.addEventListener('change', async (e) => {
+            if (!currentLive) return;
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    setStatus('Gerando stream de imagem...', 'warning');
+                    await currentLive.transmitirImagem(file);
+                    setStatus('✅ Imagem estática sendo transmitida!', 'success');
+                } catch (err) {
+                    setStatus(`❌ Erro na imagem estática: ${err.message}`, 'error');
+                }
             }
         });
 

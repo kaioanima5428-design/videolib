@@ -94,6 +94,12 @@ export class Viewer extends SimpleEventEmitter {
             this.emit('encerrado');
         });
 
+        this.signaling.on(EVENTS.LIVE_POSTER, (payload) => {
+            if (this.videoElement) {
+                this.videoElement.poster = payload.url;
+            }
+        });
+
         this.signaling.on(EVENTS.YOUTUBE_SYNC, async (payload) => {
             if (!this.ytPlayer && this.ytContainer) {
                 if (this.videoElement) this.videoElement.style.display = 'none';
@@ -104,9 +110,15 @@ export class Viewer extends SimpleEventEmitter {
                 
                 this.ytPlayer = new YT.Player(playerDiv, {
                     videoId: payload.videoId,
-                    playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1 },
+                    playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'autoplay': 1 },
                     events: {
-                        'onReady': () => this._applyYtSync(payload)
+                        'onReady': () => {
+                            // Impede que o usuário clique na tela para pausar o iframe
+                            const iframe = this.ytPlayer.getIframe();
+                            if (iframe) iframe.style.pointerEvents = 'none';
+
+                            this._applyYtSync(payload);
+                        }
                     }
                 });
             } else if (this.ytPlayer && this.ytPlayer.seekTo) {
@@ -133,7 +145,7 @@ export class Viewer extends SimpleEventEmitter {
             this.ytPlayer.seekTo(payload.time, true);
         }
 
-        if (payload.action === 'play') {
+        if (payload.action === 'play' || payload.action === 'sync') {
             this.ytPlayer.playVideo();
         } else if (payload.action === 'pause') {
             this.ytPlayer.pauseVideo();

@@ -160,6 +160,18 @@ export class Live extends SimpleEventEmitter {
                 videoElement.srcObject = this.localStream;
                 videoElement.muted = true;
             }
+            
+            // Atualiza trilhas para os peers ativos
+            for (const peer of this.viewers.values()) {
+                if (this.videoTrack) {
+                    const videoSender = peer.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) videoSender.replaceTrack(this.videoTrack);
+                }
+                if (this.audioTrack) {
+                    const audioSender = peer.getSenders().find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) audioSender.replaceTrack(this.audioTrack);
+                }
+            }
         } catch (error) {
             throw new Error('Não foi possível acessar a câmera: ' + error.message);
         }
@@ -187,6 +199,52 @@ export class Live extends SimpleEventEmitter {
             }
         } catch (error) {
             throw new Error('Não foi possível capturar o vídeo: ' + error.message);
+        }
+    }
+
+    async transmitirImagem(fileOrUrl) {
+        let imgUrl = fileOrUrl;
+        if (fileOrUrl instanceof File) {
+            imgUrl = URL.createObjectURL(fileOrUrl);
+        }
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = imgUrl;
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error('Erro ao processar imagem.'));
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const hRatio = canvas.width / img.width;
+        const vRatio = canvas.height / img.height;
+        const ratio  = Math.min(hRatio, vRatio);
+        const cx = (canvas.width - img.width*ratio) / 2;
+        const cy = (canvas.height - img.height*ratio) / 2;
+        ctx.drawImage(img, 0, 0, img.width, img.height, cx, cy, img.width*ratio, img.height*ratio);
+
+        const canvasStream = canvas.captureStream(15);
+        this.videoTrack = canvasStream.getVideoTracks()[0];
+        
+        if (this.localVideoElement) {
+            if (this.localVideoElement.srcObject) {
+                const currentAudio = this.localVideoElement.srcObject.getAudioTracks();
+                this.localVideoElement.srcObject = new MediaStream([this.videoTrack, ...currentAudio]);
+            } else {
+                this.localVideoElement.srcObject = canvasStream;
+            }
+        }
+
+        for (const peer of this.viewers.values()) {
+            const videoSender = peer.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (videoSender) videoSender.replaceTrack(this.videoTrack);
         }
     }
 
@@ -335,7 +393,8 @@ export class Live extends SimpleEventEmitter {
                                 const state = this.ytPlayer.getPlayerState();
                                 if (state === YT.PlayerState.PLAYING) {
                                     const time = this.ytPlayer.getCurrentTime();
-                                    const currVid = this.ytPlayer.getVideoData().video_id;
+                                    const data = this.ytPlayer.getVideoData ? this.ytPlayer.getVideoData() : {};
+                                    const currVid = data.video_id || mainVideoId;
                                     this.signaling.send(EVENTS.YOUTUBE_SYNC, { action: 'sync', time, videoId: currVid });
                                 }
                             }
@@ -344,7 +403,8 @@ export class Live extends SimpleEventEmitter {
                     'onStateChange': (event) => {
                         const state = event.data;
                         const time = this.ytPlayer.getCurrentTime();
-                        const currVid = this.ytPlayer.getVideoData().video_id;
+                        const data = this.ytPlayer.getVideoData ? this.ytPlayer.getVideoData() : {};
+                        const currVid = data.video_id || mainVideoId;
                         let action = '';
 
                         if (state === YT.PlayerState.PLAYING) action = 'play';
@@ -359,11 +419,35 @@ export class Live extends SimpleEventEmitter {
         });
     }
 
+    // ==================== CAPA DA LIVE ====================
+    async capa(fileOrUrl) {
+        let url = fileOrUrl;
+        if (fileOrUrl instanceof File) {
+            const formData = new FormData();
+            formData.append('video', fileOrUrl);
+            const endpoint = this.signalingUrl.replace('ws://', 'http://').replace('wss://', 'https://') + '/videos';
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: formData
+            });
+            if (!response.ok) throw new Error('Falha no upload da capa');
+            const res = await response.json();
+            url = res.url;
+        }
+        
+        if (this.localVideoElement) {
+            this.localVideoElement.poster = url;
+        }
+        this.signaling.send(EVENTS.LIVE_POSTER, { url });
+        return url;
+    }
+
     // ==================== ALIASES EM INGLÊS ====================
     async start() { return this.iniciar(); }
     async stop(id = null) { return this.parar(id); }
     async video(videoElement) { return this.camera(videoElement); }
     async streamVideo(videoElement) { return this.transmitirVideo(videoElement); }
+    async streamImage(fileOrUrl) { return this.transmitirImagem(fileOrUrl); }
     async audio(enable = true) { return this.microfone(enable); }
     unmute() { return this.desmutar(); }
     pauseVideo() { return this.pausarCamera(); }
@@ -371,8 +455,9 @@ export class Live extends SimpleEventEmitter {
     async screen(videoElement) { return this.tela(videoElement); }
     async stopScreen() { return this.pararTela(); }
     
-    enqueue(file) { this.adicionarNaFila(file); }
+    async enqueue(file) { return this.adicionarNaFila(file); }
     dequeue(index) { this.removerDaFila(index); }
-    loopQueue(active) { this.loopFila(active); }
+    async loopQueue(active) { return this.loopFila(active); }
     async startQueue(videoElement) { return this.iniciarFila(videoElement); }
+    async poster(fileOrUrl) { return this.capa(fileOrUrl); }
 }

@@ -545,6 +545,8 @@ A classe estática principal que você importa no cliente.
 | `room.adicionarNaFila(arquivo)` | Adiciona um arquivo à fila de reprodução (Playlist). |
 | `room.loopFila(ativo)` | Habilita/desabilita o loop da playlist. |
 | `await room.iniciarFila(videoEl)` | Inicia a reprodução da fila no player e transmite. |
+| `await live.capa(arquivoOuUrl)` | Define uma capa (poster) para a live e transmite aos espectadores. |
+| `await live.transmitirImagem(arqOuUrl)` | Substitui o vídeo atual por uma imagem estática (ideal para mutes). |
 | `await live.youtube(div, url)` | (Live/Viewer) Inicializa a API do YouTube no `div` indicado e faz a sincronização de "Watch Party". |
 | `room.on(evento, callback)` | Assina eventos da sala (veja abaixo). |
 | `await room.entrar()` | Inicia a conexão à malha P2P. |
