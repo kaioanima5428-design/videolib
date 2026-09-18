@@ -177,10 +177,15 @@ export class VideoServer {
     }
 
     youtubeQueue(roomId, urlOrId) {
+        const id = this._extractYtId(urlOrId);
+        if (!id) return;
+
         const state = this.youtubeRooms.get(roomId);
-        if (!state) return;
-        const vid = this._extractYtId(urlOrId);
-        if (vid) state.playlist.push(vid);
+        if (state) {
+            state.playlist.push(id);
+        } else {
+            this.youtubeParty(roomId, [id]);
+        }
     }
 
     youtubePlay(roomId) {
@@ -297,8 +302,14 @@ export class VideoServer {
     }
 
     fileQueue(roomId, url) {
+        if (!url) return;
+        
         const state = this.fileRooms.get(roomId);
-        if (state && url) state.playlist.push(url);
+        if (state) {
+            state.playlist.push(url);
+        } else {
+            this.fileParty(roomId, [url]);
+        }
     }
 
     filePlay(roomId) {
